@@ -550,14 +550,14 @@ const saveTrial = async (e) => {
 
 const handleStartTitleTracking = async (e) => {
   e.preventDefault()
-  current_level: isMACH ? 'Master' : titleForm.current_level,
+  const isMACH = titleForm.class_type === 'MACH'
   const req = isMACH ? null : (titleForm.venue === 'AKC' && titleForm.current_level === 'Master') ? 10 : 3
 
   const { error } = await supabase.from('title_progress').insert([{
     dog_id: titleForm.dog_id,
     venue: titleForm.venue,
     class_type: titleForm.class_type,
-    current_level: isMACH ? null : titleForm.current_level,
+    current_level: isMACH ? 'Master' : titleForm.current_level,
     qs_earned_manually: isMACH ? 0 : parseInt(titleForm.initialQs || 0),
     required_qs: req,
     mach_points: isMACH ? parseInt(titleForm.initialMachPoints || 0) : null,
