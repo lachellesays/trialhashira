@@ -1,8 +1,11 @@
+// ========================================== //
+// === SECTION 1: IMPORTS & CONFIGURATION === //
+// ========================================== //
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 
-// --- Configuration Constants ---
+// Static data used for dropdown menus throughout the app
 const VENUE_CLASSES = {
   AKC: ['JWW', 'STD', 'FAST', 'Premier', 'T2B', 'ISC J', 'ISC A'],
   UKI: ['Jumping', 'Agility', 'Gamblers', 'Snookers', 'Masters Jumping', 'Masters Agility', 'Speedstakes']
@@ -13,49 +16,56 @@ const CLASS_LEVELS = {
 }
 const NQ_REASONS = ['wrong course', 'refusal', 'bar', 'a-frame', 'teeter', 'dogwalk', 'other']
 
-function App() {
+export default function App() {
+  // ========================================== //
+  // === SECTION 2: STATE INITIALIZATION    === //
+  // ========================================== //
+  
+  // App Core State
   const [session, setSession] = useState(null)
   const [activeTab, setActiveTab] = useState('my-pack')
   const [dogs, setDogs] = useState([])
-
-  // --- RESPONSIVE STATE ---
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
-  // --- STATE: Add/Edit Dog ---
+  // Forms State
   const [dogForm, setDogForm] = useState({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
-  const [editingDog, setEditingDog] = useState(null)
-  const [editDogForm, setEditDogForm] = useState({ id: '', regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
-
-  // --- STATE: Log New Trial ---
   const [trialInfo, setTrialInfo] = useState({ dog_id: '', venue: 'AKC', trial_date: '', location: '', judge_name: '' })
   const [runs, setRuns] = useState([{ class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '' }])
+  const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0 })
 
-  // --- STATE: Dashboard ---
+  // Dashboard & Tracking State
   const [trials, setTrials] = useState([])
+  const [titles, setTitles] = useState([])
   const [dashboardFilters, setDashboardFilters] = useState({ dogId: '', dateFrom: '', dateTo: '', venue: '', sortBy: 'date-desc' })
   const [dashboardView, setDashboardView] = useState('list') 
+
+  // Editing Modals State
+  const [editingDog, setEditingDog] = useState(null)
+  const [editDogForm, setEditDogForm] = useState({ id: '', regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
   const [editingTrial, setEditingTrial] = useState(null)
   const [editTrialForm, setEditTrialForm] = useState({})
   const [editRuns, setEditRuns] = useState([])
 
-  // --- STATE: Title Progress ---
-  const [titles, setTitles] = useState([])
-  const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0 })
 
-  // 0. Resize Listener for Mobile detection
+  // ========================================== //
+  // === SECTION 3: LIFECYCLE & DATA FETCHING== //
+  // ========================================== //
+
+  // Listen for screen size changes for mobile responsiveness
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // 1. Auth & Initial Data Fetch
+  // Check for active Supabase login session on load
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     return () => subscription.unsubscribe()
   }, [])
 
+  // Fetch all core data once the user is logged in
   useEffect(() => {
     if (session) {
       fetchDogs()
@@ -76,6 +86,8 @@ function App() {
 
   const fetchTrials = async () => {
     let query = supabase.from('trials').select('*, dog_info(call_name), trial_runs(*)')
+    
+    // Apply Dashboard Filters before fetching
     if (dashboardFilters.dogId) query = query.eq('dog_id', dashboardFilters.dogId)
     if (dashboardFilters.venue) query = query.eq('venue', dashboardFilters.venue)
     if (dashboardFilters.dateFrom) query = query.gte('trial_date', dashboardFilters.dateFrom)
@@ -85,11 +97,17 @@ function App() {
     if (data) setTrials(data)
   }
 
+  // Refetch trials if the user changes the dashboard filters
   useEffect(() => {
     if (session && activeTab === 'dashboard') fetchTrials()
   }, [session, activeTab, dashboardFilters])
 
-  // --- SMART DEFAULTS LOGIC ---
+
+  // ========================================== //
+  // === SECTION 4: SMART DEFAULTS          === //
+  // ========================================== //
+  
+  // Automatically fill in Jump Height and Class Level based on past history
   useEffect(() => {
     if (trialInfo.dog_id && trialInfo.venue) {
       const selectedDog = dogs.find(d => d.id === trialInfo.dog_id)
@@ -106,15 +124,16 @@ function App() {
     }
   }, [trialInfo.dog_id, trialInfo.venue, dogs])
 
-  // 2. LOGIC: Dog Management (Add, Edit, Delete)
+
+  // ========================================== //
+  // === SECTION 5: DOG MANAGEMENT LOGIC    === //
+  // ========================================== //
+
   const saveDog = async (e) => {
     e.preventDefault()
     const { error } = await supabase.from('dog_info').insert([{
-      registered_name: dogForm.regName,
-      call_name: dogForm.callName,
-      dob: dogForm.dob,
-      breed: dogForm.breed,
-      venue_height: { AKC: dogForm.akcHt, UKI: dogForm.ukiHt }
+      registered_name: dogForm.regName, call_name: dogForm.callName, dob: dogForm.dob,
+      breed: dogForm.breed, venue_height: { AKC: dogForm.akcHt, UKI: dogForm.ukiHt }
     }])
     if (error) alert(error.message)
     else {
@@ -126,65 +145,59 @@ function App() {
   const startEditDog = (dog) => {
     setEditingDog(dog.id)
     setEditDogForm({
-      id: dog.id,
-      regName: dog.registered_name || '',
-      callName: dog.call_name || '',
-      dob: dog.dob || '',
-      breed: dog.breed || '',
-      akcHt: dog.venue_height?.AKC || '',
-      ukiHt: dog.venue_height?.UKI || ''
+      id: dog.id, regName: dog.registered_name || '', callName: dog.call_name || '',
+      dob: dog.dob || '', breed: dog.breed || '',
+      akcHt: dog.venue_height?.AKC || '', ukiHt: dog.venue_height?.UKI || ''
     })
   }
 
   const saveEditedDog = async (e) => {
     e.preventDefault()
     const { error } = await supabase.from('dog_info').update({
-      registered_name: editDogForm.regName,
-      call_name: editDogForm.callName,
-      dob: editDogForm.dob,
-      breed: editDogForm.breed,
-      venue_height: { AKC: editDogForm.akcHt, UKI: editDogForm.ukiHt }
+      registered_name: editDogForm.regName, call_name: editDogForm.callName, dob: editDogForm.dob,
+      breed: editDogForm.breed, venue_height: { AKC: editDogForm.akcHt, UKI: editDogForm.ukiHt }
     }).eq('id', editDogForm.id)
-
     if (error) alert(error.message)
-    else {
-      alert("Dog Updated!")
-      setEditingDog(null)
-      fetchDogs()
-    }
+    else { alert("Dog Updated!"); setEditingDog(null); fetchDogs() }
   }
 
   const deleteDog = async (id) => {
-    if (window.confirm("CRITICAL WARNING: Are you sure you want to delete this dog? This will permanently delete ALL their recorded trials, runs, and title trackers. This cannot be undone.")) {
+    if (window.confirm("CRITICAL WARNING: Delete dog? This permanently deletes ALL their trials, runs, and titles.")) {
       const { error } = await supabase.from('dog_info').delete().eq('id', id)
       if (error) alert(error.message)
-      else {
-        fetchDogs()
-        fetchTrials()
-        fetchTitles()
-      }
+      else { fetchDogs(); fetchTrials(); fetchTitles() }
     }
   }
 
-  // 3. LOGIC: Trial Logging
+
+  // ========================================== //
+  // === SECTION 6: TRIAL LOGGING LOGIC     === //
+  // ========================================== //
+
   const addRunRow = () => {
     const selectedDog = dogs.find(d => d.id === trialInfo.dog_id)
     const defaultHeight = selectedDog?.venue_height?.[trialInfo.venue] || ''
-    const lastLevel = runs[runs.length - 1]?.class_level || ''
+    const lastLevel = runs[runs.length - 1]?.class_level || '' // Inherit level from row above
     setRuns([...runs, { class_name: '', class_level: lastLevel, jump_height: defaultHeight, is_q: false, nq_reason: '', comments: '', yps: '', course_time: '' }])
   }
+  
   const removeRunRow = (index) => { if (runs.length > 1) setRuns(runs.filter((_, i) => i !== index)) }
   const updateRun = (index, field, value) => { const newRuns = [...runs]; newRuns[index][field] = value; setRuns(newRuns) }
 
   const saveTrial = async (e) => {
     e.preventDefault()
+    // 1. Save Header
     const { data, error: tErr } = await supabase.from('trials').insert([trialInfo]).select()
     if (tErr) return alert(tErr.message)
 
+    // 2. Format numbers and link to trial ID
     const runsWithId = runs.map(run => ({ ...run, trial_id: data[0].id, yps: run.yps === '' ? null : parseFloat(run.yps), course_time: run.course_time === '' ? null : parseFloat(run.course_time) }))
+    
+    // 3. Save Runs
     const { error: rErr } = await supabase.from('trial_runs').insert(runsWithId)
     if (rErr) return alert(rErr.message)
 
+    // 4. Update Title Trackers
     for (const run of runs) {
       if (run.is_q) {
         const { data: tracker } = await supabase.from('title_progress').select('*').eq('dog_id', trialInfo.dog_id).eq('venue', trialInfo.venue).eq('class_type', run.class_name).eq('current_level', run.class_level).maybeSingle()
@@ -197,73 +210,81 @@ function App() {
     alert("Trial Saved!"); fetchTrials(); fetchTitles(); setActiveTab('dashboard')
   }
 
-  // 4. LOGIC: Titles
+
+  // ========================================== //
+  // === SECTION 7: TITLE TRACKING LOGIC    === //
+  // ========================================== //
+
   const handleStartTitleTracking = async (e) => {
     e.preventDefault()
     const req = (titleForm.venue === 'AKC' && titleForm.current_level === 'Master') ? 10 : 3
     const { error } = await supabase.from('title_progress').insert([{ dog_id: titleForm.dog_id, venue: titleForm.venue, class_type: titleForm.class_type, current_level: titleForm.current_level, qs_earned_manually: parseInt(titleForm.initialQs || 0), required_qs: req }])
     if (error) alert(error.message); else fetchTitles()
   }
+  
   const deleteTitle = (id) => { if (window.confirm("Delete tracker?")) supabase.from('title_progress').delete().eq('id', id).then(fetchTitles) }
 
-  // 5. EDIT LOGIC (Trials)
+
+  // ========================================== //
+  // === SECTION 8: TRIAL EDITING LOGIC     === //
+  // ========================================== //
+
   const startEditTrial = (trial) => { setEditingTrial(trial.id); setEditTrialForm({ ...trial }); setEditRuns(trial.trial_runs || []) }
   const updateEditRun = (index, field, value) => { const newRuns = [...editRuns]; newRuns[index][field] = value; setEditRuns(newRuns) }
   const addEditRunRow = () => setEditRuns([...editRuns, { class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '' }])
   const removeEditRunRow = (index) => { if (editRuns.length > 1) setEditRuns(editRuns.filter((_, i) => i !== index)) }
+  
   const saveEditedTrial = async (e) => {
     e.preventDefault()
     await supabase.from('trials').update({ dog_id: editTrialForm.dog_id, venue: editTrialForm.venue, trial_date: editTrialForm.trial_date, location: editTrialForm.location, judge_name: editTrialForm.judge_name }).eq('id', editTrialForm.id)
+    // Delete old runs and replace with edited ones
     await supabase.from('trial_runs').delete().eq('trial_id', editTrialForm.id)
     const runsWithId = editRuns.map(run => ({ ...run, trial_id: editTrialForm.id, yps: run.yps === '' ? null : parseFloat(run.yps), course_time: run.course_time === '' ? null : parseFloat(run.course_time) }))
     await supabase.from('trial_runs').insert(runsWithId)
     setEditingTrial(null); fetchTrials()
   }
 
-  // --- DYNAMIC STYLES ---
+
+  // ========================================== //
+  // === SECTION 9: STYLING HELPERS         === //
+  // ========================================== //
+
   const navContainerStyle = isMobile ? {
-    position: 'fixed', bottom: 0, left: 0, right: 0, 
-    backgroundColor: '#fff', borderTop: '1px solid #ddd', 
-    display: 'flex', justifyContent: 'space-around', padding: '10px 5px', 
-    zIndex: 999, boxShadow: '0 -2px 10px rgba(0,0,0,0.1)'
-  } : { 
-    display: 'flex', gap: '5px', marginBottom: '20px', flexWrap: 'wrap' 
-  }
+    position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #ddd', 
+    display: 'flex', justifyContent: 'space-around', padding: '10px 5px', zIndex: 999, boxShadow: '0 -2px 10px rgba(0,0,0,0.1)'
+  } : { display: 'flex', gap: '5px', marginBottom: '20px', flexWrap: 'wrap' }
 
   const getTabStyle = (tab) => {
     if (isMobile) {
-      return {
-        flex: 1, padding: '8px 4px', fontSize: '0.8em', border: 'none', background: 'transparent',
-        color: activeTab === tab ? '#007bff' : '#666', fontWeight: activeTab === tab ? 'bold' : 'normal',
-        borderBottom: activeTab === tab ? '3px solid #007bff' : '3px solid transparent', textTransform: 'capitalize'
-      }
+      return { flex: 1, padding: '8px 4px', fontSize: '0.8em', border: 'none', background: 'transparent', color: activeTab === tab ? '#007bff' : '#666', fontWeight: activeTab === tab ? 'bold' : 'normal', borderBottom: activeTab === tab ? '3px solid #007bff' : '3px solid transparent', textTransform: 'capitalize' }
     }
-    return {
-      padding: '10px', flex: 1, cursor: 'pointer', border: 'none', borderRadius: '4px', textTransform: 'capitalize',
-      backgroundColor: activeTab === tab ? '#007bff' : '#f0f0f0',
-      color: activeTab === tab ? 'white' : 'black'
-    }
+    return { padding: '10px', flex: 1, cursor: 'pointer', border: 'none', borderRadius: '4px', textTransform: 'capitalize', backgroundColor: activeTab === tab ? '#007bff' : '#f0f0f0', color: activeTab === tab ? 'white' : 'black' }
   }
 
+  // Force login if no session
   if (!session) return <div style={{ padding: '50px' }}><Auth /></div>
 
+
+  // ========================================== //
+  // === SECTION 10: MAIN RENDER (JSX)      === //
+  // ========================================== //
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', marginBottom: '15px' }}>
         <h2>Trial Tracker</h2>
         <button onClick={() => supabase.auth.signOut()} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer' }}>Sign Out</button>
       </header>
 
-      {/* DYNAMIC NAVIGATION */}
+      {/* NAVIGATION */}
       <nav style={navContainerStyle}>
         {['my-pack', 'add-dog', 'log-trial', 'titles', 'dashboard'].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={getTabStyle(tab)}>
-            {tab.replace('-', ' ')}
-          </button>
+          <button key={tab} onClick={() => setActiveTab(tab)} style={getTabStyle(tab)}>{tab.replace('-', ' ')}</button>
         ))}
       </nav>
 
-      {/* VIEW: My Pack */}
+      {/* === TAB VIEW: MY PACK === */}
       {activeTab === 'my-pack' && (
         <div>
           <h3>Your Dogs</h3>
@@ -283,7 +304,7 @@ function App() {
         </div>
       )}
 
-      {/* VIEW: Add New Dog */}
+      {/* === TAB VIEW: ADD DOG === */}
       {activeTab === 'add-dog' && (
         <form onSubmit={saveDog} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3>Register New Dog</h3>
@@ -299,7 +320,7 @@ function App() {
         </form>
       )}
 
-      {/* VIEW: Log Trial */}
+      {/* === TAB VIEW: LOG TRIAL === */}
       {activeTab === 'log-trial' && (
         <form onSubmit={saveTrial}>
           <h3>Log Trial</h3>
@@ -332,7 +353,7 @@ function App() {
         </form>
       )}
 
-      {/* VIEW: Titles */}
+      {/* === TAB VIEW: TITLES === */}
       {activeTab === 'titles' && (
         <div>
           <h3>Title Progress</h3>
@@ -356,7 +377,7 @@ function App() {
         </div>
       )}
 
-      {/* VIEW: Dashboard */}
+      {/* === TAB VIEW: DASHBOARD === */}
       {activeTab === 'dashboard' && (
         <div>
           <h3>Dashboard</h3>
@@ -391,7 +412,11 @@ function App() {
         </div>
       )}
 
-      {/* Edit Dog Modal */}
+      {/* ========================================== */}
+      {/* === MODALS (Render over everything else) === */}
+      {/* ========================================== */}
+
+      {/* MODAL: EDIT DOG INFO */}
       {editingDog && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '10px' : '0' }}>
           <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -414,7 +439,7 @@ function App() {
         </div>
       )}
 
-      {/* Edit Trial Modal */}
+      {/* MODAL: EDIT TRIAL */}
       {editingTrial && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '10px' : '0' }}>
           <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -446,5 +471,3 @@ function App() {
     </div>
   )
 }
-
-export default App
