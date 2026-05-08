@@ -266,30 +266,7 @@ const saveTrial = async (e) => {
   alert("Trial Saved!"); fetchTrials(); fetchTitles(); setActiveTab('dashboard')
 }
 
-    // Formats text input into numbers for the database
-    const runsWithId = runs.map(run => ({ 
-      ...run, 
-      trial_id: data[0].id, 
-      yps: run.yps === '' ? null : parseFloat(run.yps), 
-      course_time: run.course_time === '' ? null : parseFloat(run.course_time),
-      placement: run.placement === '' ? null : parseInt(run.placement)
-    }))
-    
-    const { error: rErr } = await supabase.from('trial_runs').insert(runsWithId)
-    if (rErr) return alert(rErr.message)
 
-    // Title Tracking auto-incrementer
-    for (const run of runs) {
-      if (run.is_q) {
-        const { data: tracker } = await supabase.from('title_progress').select('*').eq('dog_id', trialInfo.dog_id).eq('venue', trialInfo.venue).eq('class_type', run.class_name).eq('current_level', run.class_level).maybeSingle()
-        if (tracker) {
-          const newInApp = (tracker.qs_earned_in_app || 0) + 1
-          await supabase.from('title_progress').update({ qs_earned_in_app: newInApp, is_completed: (tracker.qs_earned_manually + newInApp) >= tracker.required_qs }).eq('id', tracker.id)
-        }
-      }
-    }
-    alert("Trial Saved!"); fetchTrials(); fetchTitles(); setActiveTab('dashboard')
-  }
 
 
   // ========================================== //
@@ -615,15 +592,7 @@ const handleStartTitleTracking = async (e) => {
     })}
   </div>
 )}
-          {titles.map(t => (
-            <div key={t.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '10px', position: 'relative' }}>
-              <button onClick={() => deleteTitle(t.id)} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', color: '#ccc', fontSize: '1.2em' }}>✕</button>
-              <strong>{t.dog_info?.call_name}: {t.current_level} {t.class_type}</strong>
-              <div style={{ marginTop: '5px' }}>{t.qs_earned_manually + (t.qs_earned_in_app || 0)}/{t.required_qs} Qs</div>
-            </div>
-          ))}
-        </div>
-      )}
+
 
       {/* === TAB VIEW: DASHBOARD === */}
       {activeTab === 'dashboard' && (
