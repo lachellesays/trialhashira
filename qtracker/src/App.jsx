@@ -308,9 +308,29 @@ export default function App() {
   // ========================================== //
   // === SECTION 10: MAIN RENDER (JSX)      === //
   // ========================================== //
+// ========================================== //
+  // === SECTION 10: MAIN RENDER (JSX)      === //
+  // ========================================== //
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif' }}>
       
+      {/* THE CSS NUKE: This forces mobile browsers to stop expanding widths */}
+      <style>{`
+        * {
+          box-sizing: border-box !important;
+        }
+        html, body {
+          margin: 0;
+          padding: 0;
+          overflow-x: hidden;
+          width: 100%;
+          position: relative;
+        }
+        input, select, textarea, button {
+          max-width: 100%;
+        }
+      `}</style>
+
       {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', marginBottom: '15px' }}>
         <h2>Trial Tracker</h2>
