@@ -384,7 +384,9 @@ export default function App() {
           <h3>Register New Dog</h3>
           <input placeholder="Call Name" required value={dogForm.callName} onChange={e => setDogForm({...dogForm, callName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
           <input placeholder="Registered Name" value={dogForm.regName} onChange={e => setDogForm({...dogForm, regName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
-          <input type="date" value={dogForm.dob} onChange={e => setDogForm({...dogForm, dob: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+
+          <input type="text" placeholder="Date of Birth" onFocus={(e) => (e.target.type = "date")} onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} value={dogForm.dob} onChange={e => setDogForm({...dogForm, dob: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+
           <input placeholder="Breed" value={dogForm.breed} onChange={e => setDogForm({...dogForm, breed: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <input type="number" inputMode="decimal" placeholder="AKC Ht" value={dogForm.akcHt} onChange={e => setDogForm({...dogForm, akcHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
@@ -406,7 +408,16 @@ export default function App() {
             <select value={trialInfo.venue} onChange={e => setTrialInfo({...trialInfo, venue: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }}>
               <option value="AKC">AKC</option><option value="UKI">UKI</option>
             </select>
-            <input type="date" required value={trialInfo.trial_date} onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} />
+            <input 
+  type="text" 
+  placeholder="Trial Date" 
+  required 
+  onFocus={(e) => (e.target.type = "date")} 
+  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
+  value={trialInfo.trial_date} 
+  onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} 
+  style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} 
+/>
             <input placeholder="Location" value={trialInfo.location} onChange={e => setTrialInfo({...trialInfo, location: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} />
             <input placeholder="Judge Name" value={trialInfo.judge_name} onChange={e => setTrialInfo({...trialInfo, judge_name: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', gridColumn: '1 / -1' }} />
           </div>
@@ -628,7 +639,15 @@ export default function App() {
             <form onSubmit={saveEditedDog} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <input placeholder="Call Name" required value={editDogForm.callName} onChange={e => setEditDogForm({...editDogForm, callName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               <input placeholder="Registered Name" value={editDogForm.regName} onChange={e => setEditDogForm({...editDogForm, regName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
-              <input type="date" value={editDogForm.dob} onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+              <input 
+  type="text" 
+  placeholder="Date of Birth" 
+  onFocus={(e) => (e.target.type = "date")} 
+  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
+  value={editDogForm.dob} 
+  onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} 
+  style={{ padding: '10px', boxSizing: 'border-box' }}
+/>
               <input placeholder="Breed" value={editDogForm.breed} onChange={e => setEditDogForm({...editDogForm, breed: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <input type="number" inputMode="decimal" placeholder="AKC Ht" value={editDogForm.akcHt} onChange={e => setEditDogForm({...editDogForm, akcHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
@@ -652,7 +671,15 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
                 <select value={editTrialForm.dog_id} onChange={e => setEditTrialForm({...editTrialForm, dog_id: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
                 <select value={editTrialForm.venue} onChange={e => setEditTrialForm({...editTrialForm, venue: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
-                <input type="date" value={editTrialForm.trial_date} onChange={e => setEditTrialForm({...editTrialForm, trial_date: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input 
+  type="text" 
+  placeholder="Trial Date" 
+  onFocus={(e) => (e.target.type = "date")} 
+  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
+  value={editTrialForm.trial_date} 
+  onChange={e => setEditTrialForm({...editTrialForm, trial_date: e.target.value})} 
+  style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} 
+/>
                 <input placeholder="Location" value={editTrialForm.location} onChange={e => setEditTrialForm({...editTrialForm, location: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <input placeholder="Judge" value={editTrialForm.judge_name} onChange={e => setEditTrialForm({...editTrialForm, judge_name: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
               </div>
