@@ -113,20 +113,24 @@ export default function App() {
   // ========================================== //
   
   useEffect(() => {
-    if (trialInfo.dog_id && trialInfo.venue) {
-      const selectedDog = dogs.find(d => d.id === trialInfo.dog_id)
-      const defaultHeight = selectedDog?.venue_height?.[trialInfo.venue] || ''
-      const lastTrial = trials.find(t => t.dog_id === trialInfo.dog_id && t.venue === trialInfo.venue)
-      const lastLevel = lastTrial?.trial_runs?.[0]?.class_level || ''
+  if (!trialInfo.dog_id || !trialInfo.venue) return
 
-      const updatedRuns = runs.map(run => ({
-        ...run,
-        jump_height: run.jump_height || defaultHeight,
-        class_level: run.class_level || lastLevel
-      }))
-      setRuns(updatedRuns)
-    }
-  }, [trialInfo.dog_id, trialInfo.venue, dogs])
+  const selectedDog = dogs.find(d => d.id === trialInfo.dog_id)
+  const defaultHeight = selectedDog?.venue_height?.[trialInfo.venue] || ''
+
+  // Find the most recent trial for this dog+venue combo
+  const relevantTrials = trials
+    .filter(t => t.dog_id === trialInfo.dog_id && t.venue === trialInfo.venue)
+    .sort((a, b) => new Date(b.trial_date) - new Date(a.trial_date))
+  const lastRun = relevantTrials[0]?.trial_runs?.[0]
+  const lastLevel = lastRun?.class_level || ''
+
+  setRuns(prev => prev.map(run => ({
+    ...run,
+    jump_height: run.jump_height || defaultHeight,
+    class_level: run.class_level || lastLevel
+  })))
+}, [trialInfo.dog_id, trialInfo.venue, dogs, trials])
 
 
   // ========================================== //
