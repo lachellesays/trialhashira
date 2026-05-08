@@ -41,7 +41,7 @@ export default function App() {
   const [trialInfo, setTrialInfo] = useState({ dog_id: '', venue: 'AKC', trial_date: '', location: '', judge_name: '' })
   // NOTE: placement is initialized here
   const [runs, setRuns] = useState([{ class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '' }])
-  const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0 })
+  const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0, initialMachPoints: 0, initialMachQQs: 0 })
   const [newPassword, setNewPassword] = useState('') // For the Settings Tab
 
   // Dashboard & Tracking State
@@ -210,10 +210,61 @@ export default function App() {
     setRuns(newRuns) 
   }
 
-  const saveTrial = async (e) => {
-    e.preventDefault()
-    const { data, error: tErr } = await supabase.from('trials').insert([trialInfo]).select()
-    if (tErr) return alert(tErr.message)
+const saveTrial = async (e) => {
+  e.preventDefault()
+
+  // Detect a Double Q (QQ): AKC, same day, both Masters STD and Masters JWW are Q
+  const isMastersSTDQ = runs.some(r => r.class_name === 'STD' && r.class_level === 'Master' && r.is_q)
+  const isMastersJWWQ = runs.some(r => r.class_name === 'JWW' && r.class_level === 'Master' && r.is_q)
+  const earnedQQ = trialInfo.venue === 'AKC' && isMastersSTDQ && isMastersJWWQ
+
+  if (earnedQQ) {
+    const confirmed = window.confirm("🎉 It looks like you earned a Double Q (QQ) today! Confirm to record this as a QQ toward your MACH.")
+    if (!confirmed) return
+  }
+
+  const { data, error: tErr } = await supabase.from('trials').insert([trialInfo]).select()
+  if (tErr) return alert(tErr.message)
+
+  const runsWithId = runs.map(run => ({
+    ...run,
+    trial_id: data[0].id,
+    yps: run.yps === '' ? null : parseFloat(run.yps),
+    course_time: run.course_time === '' ? null : parseFloat(run.course_time),
+    placement: run.placement === '' ? null : parseInt(run.placement),
+    mach_points: run.mach_points === '' || run.mach_points == null ? null : parseInt(run.mach_points)
+  }))
+
+  const { error: rErr } = await supabase.from('trial_runs').insert(runsWithId)
+  if (rErr) return alert(rErr.message)
+
+  // Standard title Q tracking
+  for (const run of runs) {
+    if (run.is_q) {
+      const { data: tracker } = await supabase.from('title_progress').select('*').eq('dog_id', trialInfo.dog_id).eq('venue', trialInfo.venue).eq('class_type', run.class_name).eq('current_level', run.class_level).maybeSingle()
+      if (tracker) {
+        const newInApp = (tracker.qs_earned_in_app || 0) + 1
+        await supabase.from('title_progress').update({ qs_earned_in_app: newInApp, is_completed: (tracker.qs_earned_manually + newInApp) >= tracker.required_qs }).eq('id', tracker.id)
+      }
+    }
+  }
+
+  // MACH tracker: update points and QQs
+  if (trialInfo.venue === 'AKC') {
+    const { data: machTracker } = await supabase.from('title_progress').select('*').eq('dog_id', trialInfo.dog_id).eq('venue', 'AKC').eq('class_type', 'MACH').maybeSingle()
+    if (machTracker) {
+      const newQQs = (machTracker.mach_qqs || 0) + (earnedQQ ? 1 : 0)
+      const pointsEarned = runs
+        .filter(r => r.is_q && r.class_level === 'Master' && (r.class_name === 'STD' || r.class_name === 'JWW') && r.mach_points)
+        .reduce((sum, r) => sum + parseInt(r.mach_points || 0), 0)
+      const newPoints = (machTracker.mach_points || 0) + pointsEarned
+      const isCompleted = newPoints >= 750 && newQQs >= 20
+      await supabase.from('title_progress').update({ mach_points: newPoints, mach_qqs: newQQs, is_completed: isCompleted }).eq('id', machTracker.id)
+    }
+  }
+
+  alert("Trial Saved!"); fetchTrials(); fetchTitles(); setActiveTab('dashboard')
+}
 
     // Formats text input into numbers for the database
     const runsWithId = runs.map(run => ({ 
@@ -245,12 +296,27 @@ export default function App() {
   // === SECTION 7: TITLE TRACKING LOGIC    === //
   // ========================================== //
 
-  const handleStartTitleTracking = async (e) => {
-    e.preventDefault()
-    const req = (titleForm.venue === 'AKC' && titleForm.current_level === 'Master') ? 10 : 3
-    const { error } = await supabase.from('title_progress').insert([{ dog_id: titleForm.dog_id, venue: titleForm.venue, class_type: titleForm.class_type, current_level: titleForm.current_level, qs_earned_manually: parseInt(titleForm.initialQs || 0), required_qs: req }])
-    if (error) alert(error.message); else fetchTitles()
+const handleStartTitleTracking = async (e) => {
+  e.preventDefault()
+  const isMACH = titleForm.class_type === 'MACH'
+  const req = isMACH ? null : (titleForm.venue === 'AKC' && titleForm.current_level === 'Master') ? 10 : 3
+
+  const { error } = await supabase.from('title_progress').insert([{
+    dog_id: titleForm.dog_id,
+    venue: titleForm.venue,
+    class_type: titleForm.class_type,
+    current_level: isMACH ? null : titleForm.current_level,
+    qs_earned_manually: isMACH ? 0 : parseInt(titleForm.initialQs || 0),
+    required_qs: req,
+    mach_points: isMACH ? parseInt(titleForm.initialMachPoints || 0) : null,
+    mach_qqs: isMACH ? parseInt(titleForm.initialMachQQs || 0) : null,
+  }])
+  if (error) alert(error.message)
+  else {
+    fetchTitles()
+    setTitleForm({ dog_id: titleForm.dog_id, venue: 'AKC', class_type: '', current_level: '', initialQs: 0, initialMachPoints: 0, initialMachQQs: 0 })
   }
+}
   const deleteTitle = (id) => { if (window.confirm("Delete tracker?")) supabase.from('title_progress').delete().eq('id', id).then(fetchTitles) }
 
 
@@ -419,6 +485,20 @@ export default function App() {
           <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }} />
         </div>
 
+        {/* MACH Points field — only shown for AKC Masters STD or JWW that is a Q */}
+        {trialInfo.venue === 'AKC' && (run.class_level === 'Master') && (run.class_name === 'STD' || run.class_name === 'JWW') && run.is_q && (
+          <div style={{ marginBottom: '8px' }}>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="MACH Points earned"
+              value={run.mach_points || ''}
+              onChange={e => updateRun(i, 'mach_points', e.target.value)}
+              style={{ width: '100%', padding: '9px 8px', borderRadius: '4px', border: '1px solid #ffe082', background: '#fff8e1', boxSizing: 'border-box', fontSize: '0.95em' }}
+            />
+          </div>
+        )}
+
         {/* Row 3: Q checkbox + NQ reason */}
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', whiteSpace: 'nowrap', padding: '9px 12px', background: run.is_q ? '#d4edda' : '#f8f8f8', border: '1px solid', borderColor: run.is_q ? '#c3e6cb' : '#ccc', borderRadius: '4px', cursor: 'pointer' }}>
@@ -449,18 +529,92 @@ export default function App() {
 
       {/* === TAB VIEW: TITLES === */}
       {activeTab === 'titles' && (
-        <div>
-          <h3>Title Progress</h3>
-          <form onSubmit={handleStartTitleTracking} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-            <select required value={titleForm.dog_id} style={{ width: '100%', marginBottom: '10px', padding: '10px', boxSizing: 'border-box' }} onChange={e => setTitleForm({...titleForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-              <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value, class_type: '', current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
-              <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value, current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="">Class</option>{VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-              <select required value={titleForm.current_level} onChange={e => setTitleForm({...titleForm, current_level: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="">Level</option>{getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}</select>
-              <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+  <div>
+    <h3>Title Progress</h3>
+    <form onSubmit={handleStartTitleTracking} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+      <select required value={titleForm.dog_id} style={{ width: '100%', marginBottom: '10px', padding: '10px', boxSizing: 'border-box' }} onChange={e => setTitleForm({...titleForm, dog_id: e.target.value})}>
+        <option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}
+      </select>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+        <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value, class_type: '', current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}>
+          <option value="AKC">AKC</option><option value="UKI">UKI</option>
+        </select>
+        <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value, current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}>
+          <option value="">Class</option>
+          {titleForm.venue === 'AKC' && <option value="MACH">MACH</option>}
+          {VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select
+          required={titleForm.class_type !== 'MACH'}
+          disabled={titleForm.class_type === 'MACH'}
+          value={titleForm.class_type === 'MACH' ? '' : titleForm.current_level}
+          onChange={e => setTitleForm({...titleForm, current_level: e.target.value})}
+          style={{ padding: '10px', boxSizing: 'border-box', background: titleForm.class_type === 'MACH' ? '#e9e9e9' : 'white', color: titleForm.class_type === 'MACH' ? '#aaa' : 'black', cursor: titleForm.class_type === 'MACH' ? 'not-allowed' : 'pointer' }}
+        >
+          <option value="">{titleForm.class_type === 'MACH' ? 'N/A — MACH has no level' : 'Level'}</option>
+          {getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+
+        {titleForm.class_type !== 'MACH' && (
+          <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+        )}
+      </div>
+
+      {/* MACH-specific starting stats */}
+      {titleForm.class_type === 'MACH' && (
+        <div style={{ marginTop: '10px', background: '#fff8e1', border: '1px solid #ffe082', borderRadius: '6px', padding: '12px' }}>
+          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: '0.9em', color: '#b8860b' }}>Enter your current MACH progress:</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '0.85em', color: '#666', display: 'block', marginBottom: '4px' }}>Current MACH Points</label>
+              <input type="number" inputMode="numeric" placeholder="e.g. 342" value={titleForm.initialMachPoints} onChange={e => setTitleForm({...titleForm, initialMachPoints: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}/>
             </div>
-            <button type="submit" style={{ width: '100%', marginTop: '10px', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box' }}>Start Tracking</button>
-          </form>
+            <div>
+              <label style={{ fontSize: '0.85em', color: '#666', display: 'block', marginBottom: '4px' }}>Current QQs</label>
+              <input type="number" inputMode="numeric" placeholder="e.g. 8" value={titleForm.initialMachQQs} onChange={e => setTitleForm({...titleForm, initialMachQQs: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}/>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button type="submit" style={{ width: '100%', marginTop: '10px', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box' }}>Start Tracking</button>
+    </form>
+
+    {titles.map(t => {
+      const isMACH = t.class_type === 'MACH'
+      const machPoints = t.mach_points || 0
+      const machQQs = t.mach_qqs || 0
+      return (
+        <div key={t.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '10px', position: 'relative' }}>
+          <button onClick={() => deleteTitle(t.id)} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', color: '#ccc', fontSize: '1.2em' }}>✕</button>
+          <strong>{t.dog_info?.call_name}: {isMACH ? 'MACH' : `${t.current_level} ${t.class_type}`}</strong>
+          {isMACH ? (
+            <div style={{ marginTop: '8px', fontSize: '0.9em' }}>
+              <div style={{ marginBottom: '4px' }}>
+                <span style={{ color: '#555' }}>Points: </span>
+                <strong>{machPoints} / 750</strong>
+                <span style={{ marginLeft: '8px', fontSize: '0.85em', color: '#888' }}>({750 - machPoints} to go)</span>
+              </div>
+              <div style={{ background: '#e9ecef', borderRadius: '4px', height: '8px', marginBottom: '8px' }}>
+                <div style={{ background: '#007bff', height: '8px', borderRadius: '4px', width: `${Math.min((machPoints / 750) * 100, 100)}%` }} />
+              </div>
+              <div style={{ marginBottom: '4px' }}>
+                <span style={{ color: '#555' }}>QQs: </span>
+                <strong>{machQQs} / 20</strong>
+                <span style={{ marginLeft: '8px', fontSize: '0.85em', color: '#888' }}>({Math.max(20 - machQQs, 0)} to go)</span>
+              </div>
+              <div style={{ background: '#e9ecef', borderRadius: '4px', height: '8px' }}>
+                <div style={{ background: '#28a745', height: '8px', borderRadius: '4px', width: `${Math.min((machQQs / 20) * 100, 100)}%` }} />
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: '5px' }}>{t.qs_earned_manually + (t.qs_earned_in_app || 0)}/{t.required_qs} Qs</div>
+          )}
+        </div>
+      )
+    })}
+  </div>
+)}
           {titles.map(t => (
             <div key={t.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '10px', position: 'relative' }}>
               <button onClick={() => deleteTitle(t.id)} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', color: '#ccc', fontSize: '1.2em' }}>✕</button>
