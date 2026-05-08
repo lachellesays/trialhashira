@@ -305,14 +305,11 @@ export default function App() {
   if (!session) return <div style={{ padding: '50px' }}><Auth /></div>
 
 
-  // ========================================== //
-  // === SECTION 10: MAIN RENDER (JSX)      === //
-  // ========================================== //
-// ========================================== //
+ // ========================================== //
   // === SECTION 10: MAIN RENDER (JSX)      === //
   // ========================================== //
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
       
       {/* THE CSS NUKE: This forces mobile browsers to stop expanding widths */}
       <style>{`
