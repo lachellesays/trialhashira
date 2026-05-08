@@ -373,49 +373,75 @@ export default function App() {
       )}
 
       {/* === TAB VIEW: LOG TRIAL === */}
-      {activeTab === 'log-trial' && (
-        <form onSubmit={saveTrial}>
-          <h3>Log Trial</h3>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-            <select required value={trialInfo.dog_id} onChange={e => setTrialInfo({...trialInfo, dog_id: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
-            <select value={trialInfo.venue} onChange={e => setTrialInfo({...trialInfo, venue: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
-            <input type="date" required value={trialInfo.trial_date} onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
-            <input placeholder="Location" value={trialInfo.location} onChange={e => setTrialInfo({...trialInfo, location: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
-            <input placeholder="Judge Name" value={trialInfo.judge_name} onChange={e => setTrialInfo({...trialInfo, judge_name: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
-          </div>
+{activeTab === 'log-trial' && (
+  <form onSubmit={saveTrial}>
+    <h3>Log Trial</h3>
 
-          {runs.map((run, i) => (
-            <div key={i} style={{ background: '#f9f9f9', padding: '15px', marginBottom: '10px', border: '1px solid #eee', position: 'relative', borderRadius: '8px' }}>
-              {runs.length > 1 && <button type="button" onClick={() => removeRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none', fontSize: '1.2em', color: '#999' }}>✕</button>}
-              
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-                <select required value={run.class_name} onChange={e => updateRun(i, 'class_name', e.target.value)} style={{ flex: 1, minWidth: isMobile ? '45%' : 'auto', padding: '8px', boxSizing: 'border-box' }}><option value="">Class</option>{VENUE_CLASSES[trialInfo.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-                <select required value={run.class_level} onChange={e => updateRun(i, 'class_level', e.target.value)} style={{ flex: 1, minWidth: isMobile ? '45%' : 'auto', padding: '8px', boxSizing: 'border-box' }}><option value="">Level</option>{getLevelsForClass(trialInfo.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}</select>
-                <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateRun(i, 'jump_height', e.target.value)} style={{ width: isMobile ? '100%' : '60px', padding: '8px', boxSizing: 'border-box' }} />
-              </div>
-              
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
-                <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
-                <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ width: '70px', padding: '8px', boxSizing: 'border-box' }} />
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
-                  <input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} style={{ transform: 'scale(1.2)' }} /> Q?
-                </label>
-                {!run.is_q && <select style={{ flex: 1, padding: '8px', boxSizing: 'border-box' }} value={run.nq_reason} onChange={e => updateRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
-              </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+      <select required value={trialInfo.dog_id} onChange={e => setTrialInfo({...trialInfo, dog_id: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }}>
+        <option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}
+      </select>
+      <select value={trialInfo.venue} onChange={e => setTrialInfo({...trialInfo, venue: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }}>
+        <option value="AKC">AKC</option><option value="UKI">UKI</option>
+      </select>
+      <input type="date" required value={trialInfo.trial_date} onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} />
+      <input placeholder="Location" value={trialInfo.location} onChange={e => setTrialInfo({...trialInfo, location: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} />
+      <input placeholder="Judge Name" value={trialInfo.judge_name} onChange={e => setTrialInfo({...trialInfo, judge_name: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', gridColumn: '1 / -1' }} />
+    </div>
 
-              <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '10px', padding: '8px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} onChange={e => updateRun(i, 'comments', e.target.value)} />
-            </div>
-          ))}
-          
-          <button type="button" onClick={addRunRow} style={{ width: '100%', boxSizing: 'border-box', padding: '12px', border: '1px dashed #ccc', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>+ Add Run</button>
-          <button type="submit" style={{ width: '100%', boxSizing: 'border-box', padding: '12px', marginTop: '10px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Save Trial</button>
-        </form>
-      )}
+    {runs.map((run, i) => (
+      <div key={i} style={{ background: '#f9f9f9', padding: '15px', marginBottom: '10px', border: '1px solid #e0e0e0', borderRadius: '8px', position: 'relative' }}>
+        {runs.length > 1 && (
+          <button type="button" onClick={() => removeRunRow(i)} style={{ position: 'absolute', right: '10px', top: '10px', border: 'none', background: 'none', fontSize: '1.1em', color: '#bbb', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+        )}
+
+        <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: '0.85em', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Run {i + 1}</p>
+
+        {/* Row 1: Class | Level | Height */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: '8px', marginBottom: '8px' }}>
+          <select required value={run.class_name} onChange={e => updateRun(i, 'class_name', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }}>
+            <option value="">Class</option>{VENUE_CLASSES[trialInfo.venue].map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select required value={run.class_level} onChange={e => updateRun(i, 'class_level', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }}>
+            <option value="">Level</option>{getLevelsForClass(trialInfo.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateRun(i, 'jump_height', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }} />
+        </div>
+
+        {/* Row 2: YPS | Time | Place */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+          <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }} />
+          <input type="number" step="0.01" inputMode="decimal" placeholder="Time (s)" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }} />
+          <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }} />
+        </div>
+
+        {/* Row 3: Q checkbox + NQ reason */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', whiteSpace: 'nowrap', padding: '9px 12px', background: run.is_q ? '#d4edda' : '#f8f8f8', border: '1px solid', borderColor: run.is_q ? '#c3e6cb' : '#ccc', borderRadius: '4px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} style={{ transform: 'scale(1.2)' }} />
+            {run.is_q ? '✅ Q' : 'Q?'}
+          </label>
+          {!run.is_q
+            ? <select value={run.nq_reason} onChange={e => updateRun(i, 'nq_reason', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }}>
+                <option value="">NQ Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            : <div style={{ padding: '9px 8px', color: '#888', fontSize: '0.9em' }}>Qualified! 🎉</div>
+          }
+        </div>
+
+        {/* Row 4: Comments */}
+        <textarea rows={2} placeholder="Comments" value={run.comments} onChange={e => updateRun(i, 'comments', e.target.value)} style={{ width: '100%', padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '0.95em', resize: 'vertical', fontFamily: 'sans-serif' }} />
+      </div>
+    ))}
+
+    <button type="button" onClick={addRunRow} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '2px dashed #ccc', background: 'transparent', borderRadius: '6px', cursor: 'pointer', color: '#666', fontSize: '0.95em' }}>
+      + Add Run
+    </button>
+    <button type="submit" style={{ width: '100%', padding: '14px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em' }}>
+      Save Trial
+    </button>
+  </form>
+)}
 
       {/* === TAB VIEW: TITLES === */}
       {activeTab === 'titles' && (
