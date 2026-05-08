@@ -16,14 +16,12 @@ const CLASS_LEVELS = {
 }
 const NQ_REASONS = ['wrong course', 'refusal', 'bar', 'a-frame', 'teeter', 'dogwalk', 'other']
 
-// Helper to determine the correct levels based on Venue and Class
+// Helper to determine the correct levels based on Venue and Class (Handles ISC exceptions)
 const getLevelsForClass = (venue, className) => {
   if (!venue) return []
-  // ISC Exception Rule
   if (venue === 'AKC' && (className === 'ISC J' || className === 'ISC A')) {
     return ['1', '2', '3']
   }
-  // Standard Rule
   return CLASS_LEVELS[venue] || []
 }
 
@@ -41,8 +39,10 @@ export default function App() {
   // Forms State
   const [dogForm, setDogForm] = useState({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
   const [trialInfo, setTrialInfo] = useState({ dog_id: '', venue: 'AKC', trial_date: '', location: '', judge_name: '' })
+  // NOTE: placement is initialized here
   const [runs, setRuns] = useState([{ class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '' }])
   const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0 })
+  const [newPassword, setNewPassword] = useState('') // For the Settings Tab
 
   // Dashboard & Tracking State
   const [trials, setTrials] = useState([])
@@ -62,21 +62,18 @@ export default function App() {
   // === SECTION 3: LIFECYCLE & DATA FETCHING== //
   // ========================================== //
 
-  // Listen for screen size changes for mobile responsiveness
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Check for active Supabase login session on load
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     return () => subscription.unsubscribe()
   }, [])
 
-  // Fetch all core data once the user is logged in
   useEffect(() => {
     if (session) {
       fetchDogs()
@@ -97,8 +94,6 @@ export default function App() {
 
   const fetchTrials = async () => {
     let query = supabase.from('trials').select('*, dog_info(call_name), trial_runs(*)')
-    
-    // Apply Dashboard Filters before fetching
     if (dashboardFilters.dogId) query = query.eq('dog_id', dashboardFilters.dogId)
     if (dashboardFilters.venue) query = query.eq('venue', dashboardFilters.venue)
     if (dashboardFilters.dateFrom) query = query.gte('trial_date', dashboardFilters.dateFrom)
@@ -108,7 +103,6 @@ export default function App() {
     if (data) setTrials(data)
   }
 
-  // Refetch trials if the user changes the dashboard filters
   useEffect(() => {
     if (session && activeTab === 'dashboard') fetchTrials()
   }, [session, activeTab, dashboardFilters])
@@ -118,7 +112,6 @@ export default function App() {
   // === SECTION 4: SMART DEFAULTS          === //
   // ========================================== //
   
-  // Automatically fill in Jump Height and Class Level based on past history
   useEffect(() => {
     if (trialInfo.dog_id && trialInfo.venue) {
       const selectedDog = dogs.find(d => d.id === trialInfo.dog_id)
@@ -137,7 +130,7 @@ export default function App() {
 
 
   // ========================================== //
-  // === SECTION 5: DOG MANAGEMENT LOGIC    === //
+  // === SECTION 5: DOG MGMT & SETTINGS     === //
   // ========================================== //
 
   const saveDog = async (e) => {
@@ -147,18 +140,14 @@ export default function App() {
       breed: dogForm.breed, venue_height: { AKC: dogForm.akcHt, UKI: dogForm.ukiHt }
     }])
     if (error) alert(error.message)
-    else {
-      alert("Dog Added!"); fetchDogs(); setActiveTab('my-pack')
-      setDogForm({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
-    }
+    else { alert("Dog Added!"); fetchDogs(); setActiveTab('my-pack'); setDogForm({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' }) }
   }
 
   const startEditDog = (dog) => {
     setEditingDog(dog.id)
     setEditDogForm({
       id: dog.id, regName: dog.registered_name || '', callName: dog.call_name || '',
-      dob: dog.dob || '', breed: dog.breed || '',
-      akcHt: dog.venue_height?.AKC || '', ukiHt: dog.venue_height?.UKI || ''
+      dob: dog.dob || '', breed: dog.breed || '', akcHt: dog.venue_height?.AKC || '', ukiHt: dog.venue_height?.UKI || ''
     })
   }
 
@@ -180,6 +169,18 @@ export default function App() {
     }
   }
 
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault()
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      alert("Error updating password: " + error.message)
+    } else {
+      alert("Password updated successfully!")
+      setNewPassword('')
+      setActiveTab('my-pack')
+    }
+  }
+
 
   // ========================================== //
   // === SECTION 6: TRIAL LOGGING LOGIC     === //
@@ -189,33 +190,28 @@ export default function App() {
     const selectedDog = dogs.find(d => d.id === trialInfo.dog_id)
     const defaultHeight = selectedDog?.venue_height?.[trialInfo.venue] || ''
     const lastLevel = runs[runs.length - 1]?.class_level || '' 
-    // Add placement: '' to the end here
     setRuns([...runs, { class_name: '', class_level: lastLevel, jump_height: defaultHeight, is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '' }])
   }
   
   const removeRunRow = (index) => { if (runs.length > 1) setRuns(runs.filter((_, i) => i !== index)) }
+  
   const updateRun = (index, field, value) => { 
     const newRuns = [...runs]; 
     newRuns[index][field] = value; 
-    
     // Auto-reset the level if the class changes to one with different level rules (like ISC)
     if (field === 'class_name') {
       const validLevels = getLevelsForClass(trialInfo.venue, value)
-      if (!validLevels.includes(newRuns[index].class_level)) {
-        newRuns[index].class_level = '' 
-      }
+      if (!validLevels.includes(newRuns[index].class_level)) newRuns[index].class_level = '' 
     }
     setRuns(newRuns) 
   }
 
   const saveTrial = async (e) => {
     e.preventDefault()
-    // 1. Save Header
     const { data, error: tErr } = await supabase.from('trials').insert([trialInfo]).select()
     if (tErr) return alert(tErr.message)
 
-    // 2. Format numbers and link to trial ID
-    // Update this line inside saveTrial:
+    // Formats text input into numbers for the database
     const runsWithId = runs.map(run => ({ 
       ...run, 
       trial_id: data[0].id, 
@@ -223,12 +219,11 @@ export default function App() {
       course_time: run.course_time === '' ? null : parseFloat(run.course_time),
       placement: run.placement === '' ? null : parseInt(run.placement)
     }))
-
-    // 3. Save Runs
+    
     const { error: rErr } = await supabase.from('trial_runs').insert(runsWithId)
     if (rErr) return alert(rErr.message)
 
-    // 4. Update Title Trackers
+    // Title Tracking auto-incrementer
     for (const run of runs) {
       if (run.is_q) {
         const { data: tracker } = await supabase.from('title_progress').select('*').eq('dog_id', trialInfo.dog_id).eq('venue', trialInfo.venue).eq('class_type', run.class_name).eq('current_level', run.class_level).maybeSingle()
@@ -252,7 +247,6 @@ export default function App() {
     const { error } = await supabase.from('title_progress').insert([{ dog_id: titleForm.dog_id, venue: titleForm.venue, class_type: titleForm.class_type, current_level: titleForm.current_level, qs_earned_manually: parseInt(titleForm.initialQs || 0), required_qs: req }])
     if (error) alert(error.message); else fetchTitles()
   }
-  
   const deleteTitle = (id) => { if (window.confirm("Delete tracker?")) supabase.from('title_progress').delete().eq('id', id).then(fetchTitles) }
 
 
@@ -261,29 +255,24 @@ export default function App() {
   // ========================================== //
 
   const startEditTrial = (trial) => { setEditingTrial(trial.id); setEditTrialForm({ ...trial }); setEditRuns(trial.trial_runs || []) }
+  
   const updateEditRun = (index, field, value) => { 
     const newRuns = [...editRuns]; 
     newRuns[index][field] = value; 
-    
-    // Auto-reset the level if the class changes during editing
     if (field === 'class_name') {
       const validLevels = getLevelsForClass(editTrialForm.venue, value)
-      if (!validLevels.includes(newRuns[index].class_level)) {
-        newRuns[index].class_level = '' 
-      }
+      if (!validLevels.includes(newRuns[index].class_level)) newRuns[index].class_level = '' 
     }
     setEditRuns(newRuns) 
   }
-  // Add placement: '' to the end of this object
+
   const addEditRunRow = () => setEditRuns([...editRuns, { class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '' }])
   const removeEditRunRow = (index) => { if (editRuns.length > 1) setEditRuns(editRuns.filter((_, i) => i !== index)) }
   
   const saveEditedTrial = async (e) => {
     e.preventDefault()
     await supabase.from('trials').update({ dog_id: editTrialForm.dog_id, venue: editTrialForm.venue, trial_date: editTrialForm.trial_date, location: editTrialForm.location, judge_name: editTrialForm.judge_name }).eq('id', editTrialForm.id)
-    // Delete old runs and replace with edited ones
     await supabase.from('trial_runs').delete().eq('trial_id', editTrialForm.id)
-    // Update this line inside saveEditedTrial:
     const runsWithId = editRuns.map(run => ({ 
       ...run, 
       trial_id: editTrialForm.id, 
@@ -330,7 +319,7 @@ export default function App() {
 
       {/* NAVIGATION */}
       <nav style={navContainerStyle}>
-        {['my-pack', 'add-dog', 'log-trial', 'titles', 'dashboard'].map(tab => (
+        {['my-pack', 'add-dog', 'log-trial', 'titles', 'dashboard', 'settings'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={getTabStyle(tab)}>{tab.replace('-', ' ')}</button>
         ))}
       </nav>
@@ -393,6 +382,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
                 <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ flex: 1 }} />
                 <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} />
+                <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ width: '70px' }} />
               </div>
               <label><input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} /> Q?</label>
               {!run.is_q && <select style={{marginLeft:'10px'}} value={run.nq_reason} onChange={e => updateRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
@@ -411,7 +401,7 @@ export default function App() {
           <form onSubmit={handleStartTitleTracking} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             <select required value={titleForm.dog_id} style={{ width: '100%', marginBottom: '10px' }} onChange={e => setTitleForm({...titleForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-              <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value})}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
+              <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value, class_type: '', current_level: ''})}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
               <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value, current_level: ''})}><option value="">Class</option>{VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
               <select required value={titleForm.current_level} onChange={e => setTitleForm({...titleForm, current_level: e.target.value})}><option value="">Level</option>{getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}</select>
               <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} />
@@ -445,7 +435,12 @@ export default function App() {
           {dashboardView === 'list' && trials.map(trial => (
             <div key={trial.id} onClick={() => startEditTrial(trial)} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#fafafa', cursor: 'pointer' }}>
                <strong>{trial.dog_info?.call_name}</strong> | {trial.trial_date} ({trial.venue})
-               {trial.trial_runs?.map(run => (<div key={run.id} style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>{run.class_name} ({run.class_level}) @ {run.jump_height}": {run.is_q ? 'Q' : 'NQ'}</div>))}
+               {trial.trial_runs?.map(run => (
+                 <div key={run.id} style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
+                   {run.class_name} ({run.class_level}) @ {run.jump_height}": {run.is_q ? 'Q' : 'NQ'}
+                   {run.placement && ` | 🏆 ${run.placement}`}
+                 </div>
+                ))}
             </div>
           ))}
           {dashboardView === 'stats' && (
@@ -463,33 +458,23 @@ export default function App() {
         </div>
       )}
 
-{/* === TAB VIEW: SETTINGS === */}
-{activeTab === 'settings' && (
-  <div>
-    <h3>Account Settings</h3>
-    
-    <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px', border: '1px solid #eee' }}>
-      <h4 style={{ marginTop: 0 }}>Change Password</h4>
-      <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '15px' }}>
-        If you used a "Forgot Password" email link to get here, please set your new password below.
-      </p>
-      
-      <form onSubmit={handleUpdatePassword} style={{ display: 'flex', gap: '10px' }}>
-        <input 
-          type="password" 
-          placeholder="Enter new password" 
-          required 
-          value={newPassword} 
-          onChange={(e) => setNewPassword(e.target.value)} 
-          style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} 
-        />
-        <button type="submit" style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>
-          Update
-        </button>
-      </form>
-    </div>
-  </div>
-)}
+      {/* === TAB VIEW: SETTINGS === */}
+      {activeTab === 'settings' && (
+        <div>
+          <h3>Account Settings</h3>
+          <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px', border: '1px solid #eee' }}>
+            <h4 style={{ marginTop: 0 }}>Change Password</h4>
+            <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '15px' }}>
+              If you used a "Forgot Password" email link to get here, please set your new password below.
+            </p>
+            <form onSubmit={handleUpdatePassword} style={{ display: 'flex', gap: '10px', flexDirection: isMobile ? 'column' : 'row' }}>
+              <input type="password" placeholder="Enter new password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+              <button type="submit" style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Update</button>
+            </form>
+          </div>
+        </div>
+      )}
+
 
       {/* ========================================== */}
       {/* === MODALS (Render over everything else) === */}
@@ -534,12 +519,16 @@ export default function App() {
               {editRuns.map((run, i) => (
                 <div key={i} style={{ background: '#f9f9f9', padding: '10px', marginBottom: '10px', position: 'relative' }}>
                   {editRuns.length > 1 && <button type="button" onClick={() => removeEditRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none' }}>✕</button>}
-                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><select value={run.class_name} onChange={e => updateEditRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[editTrialForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-                  <select required value={run.class_level} onChange={e => updateEditRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}>
-                  <option value="">Level</option>{getLevelsForClass(editTrialForm.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                  <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateEditRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} /></div>
-                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateEditRun(i, 'yps', e.target.value)} style={{ flex: 1 }} /><input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} /></div>
+                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                    <select required value={run.class_name} onChange={e => updateEditRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[editTrialForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
+                    <select required value={run.class_level} onChange={e => updateEditRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}><option value="">Level</option>{getLevelsForClass(editTrialForm.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}</select>
+                    <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateEditRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                    <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateEditRun(i, 'yps', e.target.value)} style={{ flex: 1 }} />
+                    <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} />
+                    <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateEditRun(i, 'placement', e.target.value)} style={{ width: '70px' }} />
+                  </div>
                   <label><input type="checkbox" checked={run.is_q} onChange={e => updateEditRun(i, 'is_q', e.target.checked)} /> Q?</label>
                   {!run.is_q && <select style={{marginLeft:'10px'}} value={run.nq_reason} onChange={e => updateEditRun(i, 'nq_reason', e.target.value)}>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
                   <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '5px' }} onChange={e => updateEditRun(i, 'comments', e.target.value)} />
