@@ -309,22 +309,17 @@ export default function App() {
   // === SECTION 10: MAIN RENDER (JSX)      === //
   // ========================================== //
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
+    // Note: paddingBottom is now 120px on mobile to clear the bottom nav bar completely
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '120px' : '20px', fontFamily: 'sans-serif' }}>
       
-      {/* THE CSS NUKE: This forces mobile browsers to stop expanding widths */}
+      {/* Gentle CSS Reset: Fixes width issues without breaking vertical scrolling */}
       <style>{`
         * {
-          box-sizing: border-box !important;
+          box-sizing: border-box;
         }
-        html, body {
+        body {
           margin: 0;
           padding: 0;
-          overflow-x: hidden;
-          width: 100%;
-          position: relative;
-        }
-        input, select, textarea, button {
-          max-width: 100%;
         }
       `}</style>
 
@@ -365,15 +360,15 @@ export default function App() {
       {activeTab === 'add-dog' && (
         <form onSubmit={saveDog} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3>Register New Dog</h3>
-          <input placeholder="Call Name" required value={dogForm.callName} onChange={e => setDogForm({...dogForm, callName: e.target.value})} />
-          <input placeholder="Registered Name" value={dogForm.regName} onChange={e => setDogForm({...dogForm, regName: e.target.value})} />
-          <input type="date" value={dogForm.dob} onChange={e => setDogForm({...dogForm, dob: e.target.value})} />
-          <input placeholder="Breed" value={dogForm.breed} onChange={e => setDogForm({...dogForm, breed: e.target.value})} />
+          <input placeholder="Call Name" required value={dogForm.callName} onChange={e => setDogForm({...dogForm, callName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+          <input placeholder="Registered Name" value={dogForm.regName} onChange={e => setDogForm({...dogForm, regName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+          <input type="date" value={dogForm.dob} onChange={e => setDogForm({...dogForm, dob: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+          <input placeholder="Breed" value={dogForm.breed} onChange={e => setDogForm({...dogForm, breed: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <input type="number" inputMode="decimal" placeholder="AKC Ht" value={dogForm.akcHt} onChange={e => setDogForm({...dogForm, akcHt: e.target.value})} />
-            <input type="number" inputMode="decimal" placeholder="UKI Ht" value={dogForm.ukiHt} onChange={e => setDogForm({...dogForm, ukiHt: e.target.value})} />
+            <input type="number" inputMode="decimal" placeholder="AKC Ht" value={dogForm.akcHt} onChange={e => setDogForm({...dogForm, akcHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+            <input type="number" inputMode="decimal" placeholder="UKI Ht" value={dogForm.ukiHt} onChange={e => setDogForm({...dogForm, ukiHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
           </div>
-          <button type="submit" style={{ padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Save Dog</button>
+          <button type="submit" style={{ padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box' }}>Save Dog</button>
         </form>
       )}
 
@@ -382,7 +377,6 @@ export default function App() {
         <form onSubmit={saveTrial}>
           <h3>Log Trial</h3>
           
-          {/* Header Inputs: Added 100% width and box-sizing to keep them inside the grid */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
             <select required value={trialInfo.dog_id} onChange={e => setTrialInfo({...trialInfo, dog_id: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
             <select value={trialInfo.venue} onChange={e => setTrialInfo({...trialInfo, venue: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
@@ -418,7 +412,6 @@ export default function App() {
             </div>
           ))}
           
-          {/* THE FIX: Added boxSizing: 'border-box' to the full-width buttons */}
           <button type="button" onClick={addRunRow} style={{ width: '100%', boxSizing: 'border-box', padding: '12px', border: '1px dashed #ccc', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>+ Add Run</button>
           <button type="submit" style={{ width: '100%', boxSizing: 'border-box', padding: '12px', marginTop: '10px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Save Trial</button>
         </form>
@@ -429,14 +422,14 @@ export default function App() {
         <div>
           <h3>Title Progress</h3>
           <form onSubmit={handleStartTitleTracking} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-            <select required value={titleForm.dog_id} style={{ width: '100%', marginBottom: '10px' }} onChange={e => setTitleForm({...titleForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
+            <select required value={titleForm.dog_id} style={{ width: '100%', marginBottom: '10px', padding: '10px', boxSizing: 'border-box' }} onChange={e => setTitleForm({...titleForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-              <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value, class_type: '', current_level: ''})}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
-              <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value, current_level: ''})}><option value="">Class</option>{VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-              <select required value={titleForm.current_level} onChange={e => setTitleForm({...titleForm, current_level: e.target.value})}><option value="">Level</option>{getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}</select>
-              <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} />
+              <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value, class_type: '', current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
+              <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value, current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="">Class</option>{VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
+              <select required value={titleForm.current_level} onChange={e => setTitleForm({...titleForm, current_level: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="">Level</option>{getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}</select>
+              <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
             </div>
-            <button type="submit" style={{ width: '100%', marginTop: '10px', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Start Tracking</button>
+            <button type="submit" style={{ width: '100%', marginTop: '10px', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box' }}>Start Tracking</button>
           </form>
           {titles.map(t => (
             <div key={t.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '10px', position: 'relative' }}>
@@ -454,8 +447,8 @@ export default function App() {
           <h3>Dashboard</h3>
           <div style={{ background: '#f5f5f5', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <select value={dashboardFilters.dogId} onChange={e => setDashboardFilters({...dashboardFilters, dogId: e.target.value})}><option value="">All Dogs</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
-              <select value={dashboardFilters.venue} onChange={e => setDashboardFilters({...dashboardFilters, venue: e.target.value})}><option value="">All Venues</option><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
+              <select value={dashboardFilters.dogId} onChange={e => setDashboardFilters({...dashboardFilters, dogId: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="">All Dogs</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
+              <select value={dashboardFilters.venue} onChange={e => setDashboardFilters({...dashboardFilters, venue: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}><option value="">All Venues</option><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
             </div>
             <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
               <button onClick={() => setDashboardView('list')} style={{ flex: 1, padding: '10px', background: dashboardView === 'list' ? '#28a745' : '#e0e0e0', color: dashboardView === 'list' ? 'white' : 'black', border: 'none', borderRadius: '4px' }}>List View</button>
@@ -498,8 +491,8 @@ export default function App() {
               If you used a "Forgot Password" email link to get here, please set your new password below.
             </p>
             <form onSubmit={handleUpdatePassword} style={{ display: 'flex', gap: '10px', flexDirection: isMobile ? 'column' : 'row' }}>
-              <input type="password" placeholder="Enter new password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-              <button type="submit" style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Update</button>
+              <input type="password" placeholder="Enter new password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+              <button type="submit" style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box' }}>Update</button>
             </form>
           </div>
         </div>
@@ -513,20 +506,20 @@ export default function App() {
       {/* MODAL: EDIT DOG INFO */}
       {editingDog && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '10px' : '0' }}>
-          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
             <h3 style={{ marginTop: 0 }}>Edit Dog Info</h3>
             <form onSubmit={saveEditedDog} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input placeholder="Call Name" required value={editDogForm.callName} onChange={e => setEditDogForm({...editDogForm, callName: e.target.value})} />
-              <input placeholder="Registered Name" value={editDogForm.regName} onChange={e => setEditDogForm({...editDogForm, regName: e.target.value})} />
-              <input type="date" value={editDogForm.dob} onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} />
-              <input placeholder="Breed" value={editDogForm.breed} onChange={e => setEditDogForm({...editDogForm, breed: e.target.value})} />
+              <input placeholder="Call Name" required value={editDogForm.callName} onChange={e => setEditDogForm({...editDogForm, callName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+              <input placeholder="Registered Name" value={editDogForm.regName} onChange={e => setEditDogForm({...editDogForm, regName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+              <input type="date" value={editDogForm.dob} onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+              <input placeholder="Breed" value={editDogForm.breed} onChange={e => setEditDogForm({...editDogForm, breed: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <input type="number" inputMode="decimal" placeholder="AKC Ht" value={editDogForm.akcHt} onChange={e => setEditDogForm({...editDogForm, akcHt: e.target.value})} />
-                <input type="number" inputMode="decimal" placeholder="UKI Ht" value={editDogForm.ukiHt} onChange={e => setEditDogForm({...editDogForm, ukiHt: e.target.value})} />
+                <input type="number" inputMode="decimal" placeholder="AKC Ht" value={editDogForm.akcHt} onChange={e => setEditDogForm({...editDogForm, akcHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+                <input type="number" inputMode="decimal" placeholder="UKI Ht" value={editDogForm.ukiHt} onChange={e => setEditDogForm({...editDogForm, ukiHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="submit" style={{ flex: 1, padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Save Changes</button>
-                <button type="button" onClick={() => setEditingDog(null)} style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '4px' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box' }}>Save Changes</button>
+                <button type="button" onClick={() => setEditingDog(null)} style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}>Cancel</button>
               </div>
             </form>
           </div>
@@ -575,7 +568,6 @@ export default function App() {
                 </div>
               ))}
               
-              {/* THE FIX: Added boxSizing: 'border-box' to the full-width buttons */}
               <button type="button" onClick={addEditRunRow} style={{ width: '100%', boxSizing: 'border-box', padding: '12px', marginBottom: '15px', border: '1px dashed #ccc', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>+ Add Run</button>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button type="submit" style={{ flex: 1, padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', boxSizing: 'border-box', fontWeight: 'bold' }}>Save</button>
