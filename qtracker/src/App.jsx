@@ -18,6 +18,9 @@ function App() {
   const [activeTab, setActiveTab] = useState('my-pack')
   const [dogs, setDogs] = useState([])
 
+  // --- RESPONSIVE STATE ---
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
   // --- STATE: Add New Dog ---
   const [dogForm, setDogForm] = useState({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
 
@@ -36,6 +39,13 @@ function App() {
   // --- STATE: Title Progress ---
   const [titles, setTitles] = useState([])
   const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0 })
+
+  // 0. Resize Listener for Mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // 1. Auth & Initial Data Fetch
   useEffect(() => {
@@ -165,18 +175,47 @@ function App() {
     setEditingTrial(null); fetchTrials()
   }
 
+  // --- DYNAMIC STYLES ---
+  const navContainerStyle = isMobile ? {
+    position: 'fixed', bottom: 0, left: 0, right: 0, 
+    backgroundColor: '#fff', borderTop: '1px solid #ddd', 
+    display: 'flex', justifyContent: 'space-around', padding: '10px 5px', 
+    zIndex: 999, boxShadow: '0 -2px 10px rgba(0,0,0,0.1)'
+  } : { 
+    display: 'flex', gap: '5px', marginBottom: '20px', flexWrap: 'wrap' 
+  }
+
+  const getTabStyle = (tab) => {
+    if (isMobile) {
+      return {
+        flex: 1, padding: '8px 4px', fontSize: '0.8em', border: 'none', background: 'transparent',
+        color: activeTab === tab ? '#007bff' : '#666', fontWeight: activeTab === tab ? 'bold' : 'normal',
+        borderBottom: activeTab === tab ? '3px solid #007bff' : '3px solid transparent', textTransform: 'capitalize'
+      }
+    }
+    return {
+      padding: '10px', flex: 1, cursor: 'pointer', border: 'none', borderRadius: '4px', textTransform: 'capitalize',
+      backgroundColor: activeTab === tab ? '#007bff' : '#f0f0f0',
+      color: activeTab === tab ? 'white' : 'black'
+    }
+  }
+
   if (!session) return <div style={{ padding: '50px' }}><Auth /></div>
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+    // Note: paddingBottom is increased on mobile so the content doesn't hide behind the bottom nav bar
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', marginBottom: '15px' }}>
-        <h2>Agility Log</h2>
+        <h2>Trial Tracker</h2>
         <button onClick={() => supabase.auth.signOut()} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer' }}>Sign Out</button>
       </header>
 
-      <nav style={{ display: 'flex', gap: '5px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      {/* DYNAMIC NAVIGATION */}
+      <nav style={navContainerStyle}>
         {['my-pack', 'add-dog', 'log-trial', 'titles', 'dashboard'].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '10px', flex: 1, backgroundColor: activeTab === tab ? '#007bff' : '#f0f0f0', color: activeTab === tab ? 'white' : 'black', border: 'none', borderRadius: '4px' }}>{tab.replace('-', ' ')}</button>
+          <button key={tab} onClick={() => setActiveTab(tab)} style={getTabStyle(tab)}>
+            {tab.replace('-', ' ')}
+          </button>
         ))}
       </nav>
 
@@ -193,7 +232,7 @@ function App() {
         </div>
       )}
 
-      {/* VIEW: Add New Dog - RESTORED */}
+      {/* VIEW: Add New Dog */}
       {activeTab === 'add-dog' && (
         <form onSubmit={saveDog} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3>Register New Dog</h3>
@@ -201,11 +240,11 @@ function App() {
           <input placeholder="Registered Name" value={dogForm.regName} onChange={e => setDogForm({...dogForm, regName: e.target.value})} />
           <input type="date" value={dogForm.dob} onChange={e => setDogForm({...dogForm, dob: e.target.value})} />
           <input placeholder="Breed" value={dogForm.breed} onChange={e => setDogForm({...dogForm, breed: e.target.value})} />
-          <div style={{ display: 'flex', gap: '5px' }}>
-            <input type="number" placeholder="AKC Ht" value={dogForm.akcHt} onChange={e => setDogForm({...dogForm, akcHt: e.target.value})} />
-            <input type="number" placeholder="UKI Ht" value={dogForm.ukiHt} onChange={e => setDogForm({...dogForm, ukiHt: e.target.value})} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <input type="number" inputMode="decimal" placeholder="AKC Ht" value={dogForm.akcHt} onChange={e => setDogForm({...dogForm, akcHt: e.target.value})} />
+            <input type="number" inputMode="decimal" placeholder="UKI Ht" value={dogForm.ukiHt} onChange={e => setDogForm({...dogForm, ukiHt: e.target.value})} />
           </div>
-          <button type="submit" style={{ padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Save Dog</button>
+          <button type="submit" style={{ padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Save Dog</button>
         </form>
       )}
 
@@ -213,7 +252,7 @@ function App() {
       {activeTab === 'log-trial' && (
         <form onSubmit={saveTrial}>
           <h3>Log Trial</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
             <select required value={trialInfo.dog_id} onChange={e => setTrialInfo({...trialInfo, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
             <select value={trialInfo.venue} onChange={e => setTrialInfo({...trialInfo, venue: e.target.value})}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
             <input type="date" required value={trialInfo.trial_date} onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} />
@@ -226,16 +265,19 @@ function App() {
               <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
                 <select required value={run.class_name} onChange={e => updateRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[trialInfo.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
                 <select required value={run.class_level} onChange={e => updateRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}><option value="">Level</option>{CLASS_LEVELS[trialInfo.venue].map(l => <option key={l} value={l}>{l}</option>)}</select>
-                <input placeholder="Ht" value={run.jump_height} onChange={e => updateRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} />
+                <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} />
               </div>
-              <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><input type="number" step="0.01" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ flex: 1 }} /><input type="number" step="0.01" placeholder="Time" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} /></div>
+              <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ flex: 1 }} />
+                <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} />
+              </div>
               <label><input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} /> Q?</label>
               {!run.is_q && <select style={{marginLeft:'10px'}} value={run.nq_reason} onChange={e => updateRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
               <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '10px' }} onChange={e => updateRun(i, 'comments', e.target.value)} />
             </div>
           ))}
-          <button type="button" onClick={addRunRow} style={{ width: '100%', padding: '8px' }}>+ Add Run</button>
-          <button type="submit" style={{ width: '100%', padding: '10px', marginTop: '10px', background: 'blue', color: 'white', border: 'none' }}>Save Trial</button>
+          <button type="button" onClick={addRunRow} style={{ width: '100%', padding: '12px' }}>+ Add Run</button>
+          <button type="submit" style={{ width: '100%', padding: '12px', marginTop: '10px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Save Trial</button>
         </form>
       )}
 
@@ -245,17 +287,17 @@ function App() {
           <h3>Title Progress</h3>
           <form onSubmit={handleStartTitleTracking} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             <select required value={titleForm.dog_id} style={{ width: '100%', marginBottom: '10px' }} onChange={e => setTitleForm({...titleForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
               <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value})}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
-              <select value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value})}><option value="">Class</option>{VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-              <select value={titleForm.current_level} onChange={e => setTitleForm({...titleForm, current_level: e.target.value})}><option value="">Level</option>{CLASS_LEVELS[titleForm.venue].map(l => <option key={l} value={l}>{l}</option>)}</select>
-              <input type="number" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} />
+              <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value})}><option value="">Class</option>{VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
+              <select required value={titleForm.current_level} onChange={e => setTitleForm({...titleForm, current_level: e.target.value})}><option value="">Level</option>{CLASS_LEVELS[titleForm.venue].map(l => <option key={l} value={l}>{l}</option>)}</select>
+              <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} />
             </div>
-            <button type="submit" style={{ width: '100%', marginTop: '10px' }}>Start Tracking</button>
+            <button type="submit" style={{ width: '100%', marginTop: '10px', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Start Tracking</button>
           </form>
           {titles.map(t => (
             <div key={t.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '10px', position: 'relative' }}>
-              <button onClick={() => deleteTitle(t.id)} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', color: '#ccc' }}>✕</button>
+              <button onClick={() => deleteTitle(t.id)} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', color: '#ccc', fontSize: '1.2em' }}>✕</button>
               <strong>{t.dog_info?.call_name}: {t.current_level} {t.class_type}</strong>
               <div style={{ marginTop: '5px' }}>{t.qs_earned_manually + (t.qs_earned_in_app || 0)}/{t.required_qs} Qs</div>
             </div>
@@ -273,14 +315,14 @@ function App() {
               <select value={dashboardFilters.venue} onChange={e => setDashboardFilters({...dashboardFilters, venue: e.target.value})}><option value="">All Venues</option><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
             </div>
             <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
-              <button onClick={() => setDashboardView('list')} style={{ flex: 1, padding: '8px', background: dashboardView === 'list' ? '#28a745' : '#e0e0e0', color: dashboardView === 'list' ? 'white' : 'black', border: 'none' }}>List View</button>
-              <button onClick={() => setDashboardView('stats')} style={{ flex: 1, padding: '8px', background: dashboardView === 'stats' ? '#28a745' : '#e0e0e0', color: dashboardView === 'stats' ? 'white' : 'black', border: 'none' }}>Stats View</button>
+              <button onClick={() => setDashboardView('list')} style={{ flex: 1, padding: '10px', background: dashboardView === 'list' ? '#28a745' : '#e0e0e0', color: dashboardView === 'list' ? 'white' : 'black', border: 'none', borderRadius: '4px' }}>List View</button>
+              <button onClick={() => setDashboardView('stats')} style={{ flex: 1, padding: '10px', background: dashboardView === 'stats' ? '#28a745' : '#e0e0e0', color: dashboardView === 'stats' ? 'white' : 'black', border: 'none', borderRadius: '4px' }}>Stats View</button>
             </div>
           </div>
           {dashboardView === 'list' && trials.map(trial => (
             <div key={trial.id} onClick={() => startEditTrial(trial)} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#fafafa', cursor: 'pointer' }}>
                <strong>{trial.dog_info?.call_name}</strong> | {trial.trial_date} ({trial.venue})
-               {trial.trial_runs?.map(run => (<div key={run.id} style={{ fontSize: '0.85em', color: '#666' }}>{run.class_name} ({run.class_level}) @ {run.jump_height}": {run.is_q ? 'Q' : 'NQ'}</div>))}
+               {trial.trial_runs?.map(run => (<div key={run.id} style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>{run.class_name} ({run.class_level}) @ {run.jump_height}": {run.is_q ? 'Q' : 'NQ'}</div>))}
             </div>
           ))}
           {dashboardView === 'stats' && (
@@ -300,11 +342,11 @@ function App() {
 
       {/* Edit Modal */}
       {editingTrial && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '10px' : '0' }}>
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3>Edit Trial</h3>
             <form onSubmit={saveEditedTrial}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
                 <select value={editTrialForm.dog_id} onChange={e => setEditTrialForm({...editTrialForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
                 <select value={editTrialForm.venue} onChange={e => setEditTrialForm({...editTrialForm, venue: e.target.value})}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
                 <input type="date" value={editTrialForm.trial_date} onChange={e => setEditTrialForm({...editTrialForm, trial_date: e.target.value})} />
@@ -314,15 +356,15 @@ function App() {
               {editRuns.map((run, i) => (
                 <div key={i} style={{ background: '#f9f9f9', padding: '10px', marginBottom: '10px', position: 'relative' }}>
                   {editRuns.length > 1 && <button type="button" onClick={() => removeEditRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none' }}>✕</button>}
-                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><select value={run.class_name} onChange={e => updateEditRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[editTrialForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select><select value={run.class_level} onChange={e => updateEditRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}><option value="">Level</option>{CLASS_LEVELS[editTrialForm.venue].map(l => <option key={l} value={l}>{l}</option>)}</select><input placeholder="Ht" value={run.jump_height} onChange={e => updateEditRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} /></div>
-                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><input type="number" step="0.01" placeholder="YPS" value={run.yps} onChange={e => updateEditRun(i, 'yps', e.target.value)} style={{ flex: 1 }} /><input type="number" step="0.01" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} /></div>
+                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><select value={run.class_name} onChange={e => updateEditRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[editTrialForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select><select value={run.class_level} onChange={e => updateEditRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}><option value="">Level</option>{CLASS_LEVELS[editTrialForm.venue].map(l => <option key={l} value={l}>{l}</option>)}</select><input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateEditRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} /></div>
+                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}><input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateEditRun(i, 'yps', e.target.value)} style={{ flex: 1 }} /><input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} /></div>
                   <label><input type="checkbox" checked={run.is_q} onChange={e => updateEditRun(i, 'is_q', e.target.checked)} /> Q?</label>
                   {!run.is_q && <select style={{marginLeft:'10px'}} value={run.nq_reason} onChange={e => updateEditRun(i, 'nq_reason', e.target.value)}>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
                   <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '5px' }} onChange={e => updateEditRun(i, 'comments', e.target.value)} />
                 </div>
               ))}
-              <button type="button" onClick={addEditRunRow} style={{width:'100%', padding:'8px', marginBottom:'15px'}}>+ Add Run</button>
-              <div style={{ display: 'flex', gap: '10px' }}><button type="submit" style={{ flex: 1, padding: '10px', background: '#007bff', color: 'white', border: 'none' }}>Save</button><button type="button" onClick={() => setEditingTrial(null)} style={{ flex: 1, padding: '10px' }}>Cancel</button></div>
+              <button type="button" onClick={addEditRunRow} style={{width:'100%', padding:'12px', marginBottom:'15px'}}>+ Add Run</button>
+              <div style={{ display: 'flex', gap: '10px' }}><button type="submit" style={{ flex: 1, padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button><button type="button" onClick={() => setEditingTrial(null)} style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '4px' }}>Cancel</button></div>
             </form>
           </div>
         </div>
