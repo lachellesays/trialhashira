@@ -309,7 +309,7 @@ export default function App() {
   // === SECTION 10: MAIN RENDER (JSX)      === //
   // ========================================== //
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
       
       {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', marginBottom: '15px' }}>
@@ -372,21 +372,33 @@ export default function App() {
             <input placeholder="Judge Name" value={trialInfo.judge_name} onChange={e => setTrialInfo({...trialInfo, judge_name: e.target.value})} />
           </div>
           {runs.map((run, i) => (
-            <div key={i} style={{ background: '#f9f9f9', padding: '15px', marginBottom: '10px', border: '1px solid #eee', position: 'relative' }}>
-              {runs.length > 1 && <button type="button" onClick={() => removeRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none' }}>✕</button>}
-              <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                <select required value={run.class_name} onChange={e => updateRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[trialInfo.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-                <select required value={run.class_level} onChange={e => updateRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}><option value="">Level</option>{getLevelsForClass(trialInfo.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}</select>
-                <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} />
+            <div key={i} style={{ background: '#f9f9f9', padding: '15px', marginBottom: '10px', border: '1px solid #eee', position: 'relative', borderRadius: '8px' }}>
+              {runs.length > 1 && <button type="button" onClick={() => removeRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none', fontSize: '1.2em', color: '#999' }}>✕</button>}
+              
+              {/* Row 1: Class, Level, Ht (Wraps on mobile) */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                <select required value={run.class_name} onChange={e => updateRun(i, 'class_name', e.target.value)} style={{ flex: 1, minWidth: isMobile ? '45%' : 'auto', padding: '8px', boxSizing: 'border-box' }}><option value="">Class</option>{VENUE_CLASSES[trialInfo.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
+                <select required value={run.class_level} onChange={e => updateRun(i, 'class_level', e.target.value)} style={{ flex: 1, minWidth: isMobile ? '45%' : 'auto', padding: '8px', boxSizing: 'border-box' }}><option value="">Level</option>{getLevelsForClass(trialInfo.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}</select>
+                <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateRun(i, 'jump_height', e.target.value)} style={{ width: isMobile ? '100%' : '60px', padding: '8px', boxSizing: 'border-box' }} />
               </div>
-              <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ flex: 1 }} />
-                <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} />
-                <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ width: '70px' }} />
+              
+              {/* Row 2: YPS, Time, Place */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateRun(i, 'yps', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateRun(i, 'course_time', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ width: '70px', padding: '8px', boxSizing: 'border-box' }} />
               </div>
-              <label><input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} /> Q?</label>
-              {!run.is_q && <select style={{marginLeft:'10px'}} value={run.nq_reason} onChange={e => updateRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
-              <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '10px' }} onChange={e => updateRun(i, 'comments', e.target.value)} />
+              
+              {/* Row 3: Q and NQ Reason */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
+                  <input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} style={{ transform: 'scale(1.2)' }} /> Q?
+                </label>
+                {!run.is_q && <select style={{ flex: 1, padding: '8px', boxSizing: 'border-box' }} value={run.nq_reason} onChange={e => updateRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
+              </div>
+
+              {/* BoxSizing prevents the textarea from breaking the screen width */}
+              <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '10px', padding: '8px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} onChange={e => updateRun(i, 'comments', e.target.value)} />
             </div>
           ))}
           <button type="button" onClick={addRunRow} style={{ width: '100%', padding: '12px' }}>+ Add Run</button>
@@ -517,21 +529,29 @@ export default function App() {
                 <input placeholder="Judge" value={editTrialForm.judge_name} onChange={e => setEditTrialForm({...editTrialForm, judge_name: e.target.value})} />
               </div>
               {editRuns.map((run, i) => (
-                <div key={i} style={{ background: '#f9f9f9', padding: '10px', marginBottom: '10px', position: 'relative' }}>
-                  {editRuns.length > 1 && <button type="button" onClick={() => removeEditRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none' }}>✕</button>}
-                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                    <select required value={run.class_name} onChange={e => updateEditRun(i, 'class_name', e.target.value)} style={{ flex: 1 }}><option value="">Class</option>{VENUE_CLASSES[editTrialForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
-                    <select required value={run.class_level} onChange={e => updateEditRun(i, 'class_level', e.target.value)} style={{ flex: 1 }}><option value="">Level</option>{getLevelsForClass(editTrialForm.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}</select>
-                    <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateEditRun(i, 'jump_height', e.target.value)} style={{ width: '60px' }} />
+                <div key={i} style={{ background: '#f9f9f9', padding: '15px', marginBottom: '10px', position: 'relative', border: '1px solid #eee', borderRadius: '8px' }}>
+                  {editRuns.length > 1 && <button type="button" onClick={() => removeEditRunRow(i)} style={{ position: 'absolute', right: '5px', top: '5px', border: 'none', background: 'none', fontSize: '1.2em', color: '#999' }}>✕</button>}
+                  
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                    <select required value={run.class_name} onChange={e => updateEditRun(i, 'class_name', e.target.value)} style={{ flex: 1, minWidth: isMobile ? '45%' : 'auto', padding: '8px', boxSizing: 'border-box' }}><option value="">Class</option>{VENUE_CLASSES[editTrialForm.venue].map(c => <option key={c} value={c}>{c}</option>)}</select>
+                    <select required value={run.class_level} onChange={e => updateEditRun(i, 'class_level', e.target.value)} style={{ flex: 1, minWidth: isMobile ? '45%' : 'auto', padding: '8px', boxSizing: 'border-box' }}><option value="">Level</option>{getLevelsForClass(editTrialForm.venue, run.class_name).map(l => <option key={l} value={l}>{l}</option>)}</select>
+                    <input inputMode="decimal" placeholder="Ht" value={run.jump_height} onChange={e => updateEditRun(i, 'jump_height', e.target.value)} style={{ width: isMobile ? '100%' : '60px', padding: '8px', boxSizing: 'border-box' }} />
                   </div>
-                  <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                    <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateEditRun(i, 'yps', e.target.value)} style={{ flex: 1 }} />
-                    <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1 }} />
-                    <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateEditRun(i, 'placement', e.target.value)} style={{ width: '70px' }} />
+                  
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                    <input type="number" step="0.01" inputMode="decimal" placeholder="YPS" value={run.yps} onChange={e => updateEditRun(i, 'yps', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
+                    <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
+                    <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateEditRun(i, 'placement', e.target.value)} style={{ width: '70px', padding: '8px', boxSizing: 'border-box' }} />
                   </div>
-                  <label><input type="checkbox" checked={run.is_q} onChange={e => updateEditRun(i, 'is_q', e.target.checked)} /> Q?</label>
-                  {!run.is_q && <select style={{marginLeft:'10px'}} value={run.nq_reason} onChange={e => updateEditRun(i, 'nq_reason', e.target.value)}>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
-                  <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '5px' }} onChange={e => updateEditRun(i, 'comments', e.target.value)} />
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
+                      <input type="checkbox" checked={run.is_q} onChange={e => updateEditRun(i, 'is_q', e.target.checked)} style={{ transform: 'scale(1.2)' }} /> Q?
+                    </label>
+                    {!run.is_q && <select style={{ flex: 1, padding: '8px', boxSizing: 'border-box' }} value={run.nq_reason} onChange={e => updateEditRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
+                  </div>
+                  
+                  <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '10px', padding: '8px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} onChange={e => updateEditRun(i, 'comments', e.target.value)} />
                 </div>
               ))}
               <button type="button" onClick={addEditRunRow} style={{width:'100%', padding:'12px', marginBottom:'15px'}}>+ Add Run</button>
