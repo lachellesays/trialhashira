@@ -515,7 +515,15 @@ export default function App() {
                 {titleForm.class_type !== 'MACH' && getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}
               </select>
               {titleForm.class_type !== 'MACH' && (
-                <input type="number" inputMode="numeric" placeholder="Existing Qs" value={titleForm.initialQs} onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
+                <input 
+  type="text" 
+  placeholder="How Many Qs Earned So Far?" 
+  onFocus={(e) => (e.target.type = "number")} 
+  onBlur={(e) => (e.target.type = e.target.value ? "number" : "text")} 
+  value={titleForm.initialQs} 
+  onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} 
+  style={{ padding: '10px', boxSizing: 'border-box' }}
+/>
               )}
             </div>
 
