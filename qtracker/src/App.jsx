@@ -36,7 +36,7 @@ export default function App() {
   const [dogForm, setDogForm] = useState({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
   const [trialInfo, setTrialInfo] = useState({ dog_id: '', venue: 'AKC', trial_date: '', location: '', judge_name: '' })
   const [runs, setRuns] = useState([{ class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '' }])
-  const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: 0, initialMachPoints: 0, initialMachQQs: 0 })
+  const [titleForm, setTitleForm] = useState({ dog_id: '', venue: 'AKC', class_type: '', current_level: '', initialQs: '', initialMachPoints: 0, initialMachQQs: 0 })
   const [newPassword, setNewPassword] = useState('')
 
   const [trials, setTrials] = useState([])
@@ -273,10 +273,10 @@ export default function App() {
       mach_points: isMACH ? parseInt(titleForm.initialMachPoints || 0) : null,
       mach_qqs: isMACH ? parseInt(titleForm.initialMachQQs || 0) : null,
     }])
-    if (error) alert(error.message)
+if (error) alert(error.message)
     else {
       fetchTitles()
-      setTitleForm({ dog_id: titleForm.dog_id, venue: 'AKC', class_type: '', current_level: '', initialQs: 0, initialMachPoints: 0, initialMachQQs: 0 })
+      setTitleForm({ dog_id: titleForm.dog_id, venue: 'AKC', class_type: '', current_level: '', initialQs: '', initialMachPoints: '', initialMachQQs: '' })
     }
   }
 
@@ -299,7 +299,7 @@ export default function App() {
     setEditRuns(newRuns)
   }
 
-  const addEditRunRow = () => setEditRuns([...editRuns, { class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '' }])
+  const addEditRunRow = () => setEditRuns([...editRuns, { class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '', placement: '', mach_points: '' }])
   const removeEditRunRow = (index) => { if (editRuns.length > 1) setEditRuns(editRuns.filter((_, i) => i !== index)) }
 
   const saveEditedTrial = async (e) => {
@@ -311,7 +311,8 @@ export default function App() {
       trial_id: editTrialForm.id,
       yps: run.yps === '' ? null : parseFloat(run.yps),
       course_time: run.course_time === '' ? null : parseFloat(run.course_time),
-      placement: run.placement === '' ? null : parseInt(run.placement)
+      placement: run.placement === '' ? null : parseInt(run.placement),
+      mach_points: run.mach_points === '' || run.mach_points == null ? null : parseInt(run.mach_points) // FIX 2: Added mach_points to the save edit mapping
     }))
     await supabase.from('trial_runs').insert(runsWithId)
     setEditingTrial(null); fetchTrials()
@@ -409,15 +410,15 @@ export default function App() {
               <option value="AKC">AKC</option><option value="UKI">UKI</option>
             </select>
             <input 
-  type="text" 
-  placeholder="Trial Date" 
-  required 
-  onFocus={(e) => (e.target.type = "date")} 
-  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
-  value={trialInfo.trial_date} 
-  onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} 
-  style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} 
-/>
+              type="text" 
+              placeholder="Trial Date" 
+              required 
+              onFocus={(e) => (e.target.type = "date")} 
+              onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
+              value={trialInfo.trial_date} 
+              onChange={e => setTrialInfo({...trialInfo, trial_date: e.target.value})} 
+              style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} 
+            />
             <input placeholder="Location" value={trialInfo.location} onChange={e => setTrialInfo({...trialInfo, location: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} />
             <input placeholder="Judge Name" value={trialInfo.judge_name} onChange={e => setTrialInfo({...trialInfo, judge_name: e.target.value})} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', gridColumn: '1 / -1' }} />
           </div>
@@ -446,7 +447,6 @@ export default function App() {
                 <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateRun(i, 'placement', e.target.value)} style={{ padding: '9px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.95em' }} />
               </div>
 
-              {/* Q checkbox row — MACH points appear here when Q is checked */}
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', whiteSpace: 'nowrap', padding: '9px 12px', background: run.is_q ? '#d4edda' : '#f8f8f8', border: '1px solid', borderColor: run.is_q ? '#c3e6cb' : '#ccc', borderRadius: '4px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={run.is_q} onChange={e => updateRun(i, 'is_q', e.target.checked)} style={{ transform: 'scale(1.2)' }} />
@@ -460,7 +460,7 @@ export default function App() {
                 }
               </div>
 
-              {/* MACH Points — only for AKC Masters STD or JWW that is a Q */}
+              {/* MACH Points */}
               {trialInfo.venue === 'AKC' && run.class_level === 'Master' && (run.class_name === 'STD' || run.class_name === 'JWW') && run.is_q && (
                 <div style={{ marginBottom: '8px' }}>
                   <input
@@ -499,31 +499,46 @@ export default function App() {
               <select value={titleForm.venue} onChange={e => setTitleForm({...titleForm, venue: e.target.value, class_type: '', current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}>
                 <option value="AKC">AKC</option><option value="UKI">UKI</option>
               </select>
-              <select required value={titleForm.class_type} onChange={e => setTitleForm({...titleForm, class_type: e.target.value, current_level: ''})} style={{ padding: '10px', boxSizing: 'border-box' }}>
+              
+              {/* FIX 1: Auto-set Level to 'Master' in React state when MACH is chosen */}
+              <select required value={titleForm.class_type} onChange={e => {
+                  const newClass = e.target.value;
+                  setTitleForm({
+                    ...titleForm, 
+                    class_type: newClass, 
+                    current_level: newClass === 'MACH' ? 'Master' : '' 
+                  });
+                }} style={{ padding: '10px', boxSizing: 'border-box' }}>
                 <option value="">Class</option>
                 {titleForm.venue === 'AKC' && <option value="MACH">MACH</option>}
                 {VENUE_CLASSES[titleForm.venue].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              
+              {/* FIX 1 Continued: Restored default "Level" option and fixed the duplicate "Master" bug */}
               <select
-                required={titleForm.class_type !== 'MACH'}
+                required
                 disabled={titleForm.class_type === 'MACH'}
-                value={titleForm.class_type === 'MACH' ? 'Master' : titleForm.current_level}
+                value={titleForm.current_level}
                 onChange={e => setTitleForm({...titleForm, current_level: e.target.value})}
                 style={{ padding: '10px', boxSizing: 'border-box', background: titleForm.class_type === 'MACH' ? '#e9e9e9' : 'white', color: titleForm.class_type === 'MACH' ? '#aaa' : 'black', cursor: titleForm.class_type === 'MACH' ? 'not-allowed' : 'pointer' }}
               >
-                <option value="Master">Master</option>
-                {titleForm.class_type !== 'MACH' && getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)}
+                <option value="">Level</option>
+                {titleForm.class_type === 'MACH' 
+                  ? <option value="Master">Master</option>
+                  : getLevelsForClass(titleForm.venue, titleForm.class_type).map(l => <option key={l} value={l}>{l}</option>)
+                }
               </select>
+              
               {titleForm.class_type !== 'MACH' && (
                 <input 
-  type="text" 
-  placeholder="How Many Qs Earned So Far?" 
-  onFocus={(e) => (e.target.type = "number")} 
-  onBlur={(e) => (e.target.type = e.target.value ? "number" : "text")} 
-  value={titleForm.initialQs} 
-  onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} 
-  style={{ padding: '10px', boxSizing: 'border-box' }}
-/>
+                  type="text" 
+                  placeholder="How Many Qs Earned So Far?" 
+                  onFocus={(e) => (e.target.type = "number")} 
+                  onBlur={(e) => (e.target.type = e.target.value ? "number" : "text")} 
+                  value={titleForm.initialQs} 
+                  onChange={e => setTitleForm({...titleForm, initialQs: e.target.value})} 
+                  style={{ padding: '10px', boxSizing: 'border-box' }}
+                />
               )}
             </div>
 
@@ -648,14 +663,14 @@ export default function App() {
               <input placeholder="Call Name" required value={editDogForm.callName} onChange={e => setEditDogForm({...editDogForm, callName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               <input placeholder="Registered Name" value={editDogForm.regName} onChange={e => setEditDogForm({...editDogForm, regName: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               <input 
-  type="text" 
-  placeholder="Date of Birth" 
-  onFocus={(e) => (e.target.type = "date")} 
-  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
-  value={editDogForm.dob} 
-  onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} 
-  style={{ padding: '10px', boxSizing: 'border-box' }}
-/>
+                type="text" 
+                placeholder="Date of Birth" 
+                onFocus={(e) => (e.target.type = "date")} 
+                onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
+                value={editDogForm.dob} 
+                onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} 
+                style={{ padding: '10px', boxSizing: 'border-box' }}
+              />
               <input placeholder="Breed" value={editDogForm.breed} onChange={e => setEditDogForm({...editDogForm, breed: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <input type="number" inputMode="decimal" placeholder="AKC Ht" value={editDogForm.akcHt} onChange={e => setEditDogForm({...editDogForm, akcHt: e.target.value})} style={{ padding: '10px', boxSizing: 'border-box' }}/>
@@ -680,14 +695,14 @@ export default function App() {
                 <select value={editTrialForm.dog_id} onChange={e => setEditTrialForm({...editTrialForm, dog_id: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
                 <select value={editTrialForm.venue} onChange={e => setEditTrialForm({...editTrialForm, venue: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}><option value="AKC">AKC</option><option value="UKI">UKI</option></select>
                 <input 
-  type="text" 
-  placeholder="Trial Date" 
-  onFocus={(e) => (e.target.type = "date")} 
-  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
-  value={editTrialForm.trial_date} 
-  onChange={e => setEditTrialForm({...editTrialForm, trial_date: e.target.value})} 
-  style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} 
-/>
+                  type="text" 
+                  placeholder="Trial Date" 
+                  onFocus={(e) => (e.target.type = "date")} 
+                  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")} 
+                  value={editTrialForm.trial_date} 
+                  onChange={e => setEditTrialForm({...editTrialForm, trial_date: e.target.value})} 
+                  style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} 
+                />
                 <input placeholder="Location" value={editTrialForm.location} onChange={e => setEditTrialForm({...editTrialForm, location: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <input placeholder="Judge" value={editTrialForm.judge_name} onChange={e => setEditTrialForm({...editTrialForm, judge_name: e.target.value})} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} />
               </div>
@@ -705,12 +720,27 @@ export default function App() {
                     <input type="number" step="0.01" inputMode="decimal" placeholder="Time" value={run.course_time} onChange={e => updateEditRun(i, 'course_time', e.target.value)} style={{ flex: 1, padding: '8px', boxSizing: 'border-box', minWidth: 0 }} />
                     <input type="number" inputMode="numeric" placeholder="Place" value={run.placement} onChange={e => updateEditRun(i, 'placement', e.target.value)} style={{ width: '70px', padding: '8px', boxSizing: 'border-box' }} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '8px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
                       <input type="checkbox" checked={run.is_q} onChange={e => updateEditRun(i, 'is_q', e.target.checked)} style={{ transform: 'scale(1.2)' }} /> Q?
                     </label>
                     {!run.is_q && <select style={{ flex: 1, padding: '8px', boxSizing: 'border-box' }} value={run.nq_reason} onChange={e => updateEditRun(i, 'nq_reason', e.target.value)}><option value="">Reason</option>{NQ_REASONS.map(r => <option key={r} value={r}>{r}</option>)}</select>}
                   </div>
+                  
+                  {/* FIX 3: Added the MACH Points block to the Edit Modal */}
+                  {editTrialForm.venue === 'AKC' && run.class_level === 'Master' && (run.class_name === 'STD' || run.class_name === 'JWW') && run.is_q && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="MACH Points earned"
+                        value={run.mach_points || ''}
+                        onChange={e => updateEditRun(i, 'mach_points', e.target.value)}
+                        style={{ width: '100%', padding: '9px 8px', borderRadius: '4px', border: '1px solid #ffe082', background: '#fff8e1', boxSizing: 'border-box', fontSize: '0.95em' }}
+                      />
+                    </div>
+                  )}
+
                   <textarea placeholder="Comments" value={run.comments} style={{ width: '100%', marginTop: '10px', padding: '8px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }} onChange={e => updateEditRun(i, 'comments', e.target.value)} />
                 </div>
               ))}
