@@ -3,7 +3,8 @@ import { supabase } from './supabaseClient'
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false) // This acts as our toggle switch
+  const [isSignUp, setIsSignUp] = useState(false) // Your original toggle switch
+  const [isForgotPassword, setIsForgotPassword] = useState(false) // New toggle for reset flow
   
   // Form State
   const [email, setEmail] = useState('')
@@ -16,9 +17,15 @@ export default function Auth() {
     setIsLoading(true)
 
     try {
-      if (isSignUp) {
+      if (isForgotPassword) {
+        // --- FORGOT PASSWORD LOGIC ---
+        const { error } = await supabase.auth.resetPasswordForEmail(email)
+        if (error) throw error
+        alert('Password reset email sent! Please check your inbox.')
+        setIsForgotPassword(false) // Send them back to the sign-in screen
+        
+      } else if (isSignUp) {
         // --- SIGN UP LOGIC ---
-        // Supabase allows us to pass extra info into the "data" object
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -51,13 +58,13 @@ export default function Auth() {
     <div style={{ maxWidth: '400px', margin: '40px auto', padding: '30px', fontFamily: 'sans-serif', border: '1px solid #eee', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
       
       <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#333' }}>
-        {isSignUp ? 'Create an Account' : 'Welcome Back'}
+        {isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create an Account' : 'Welcome Back')}
       </h2>
       
       <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         
-        {/* Only show Name fields if they are signing up */}
-        {isSignUp && (
+        {/* Only show Name fields if they are signing up and NOT resetting password */}
+        {isSignUp && !isForgotPassword && (
           <div style={{ display: 'flex', gap: '10px' }}>
             <input 
               type="text" 
@@ -87,14 +94,29 @@ export default function Auth() {
           style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }}
         />
         
-        <input 
-          type="password" 
-          placeholder="Password (min 6 characters)" 
-          required 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }}
-        />
+        {/* Hide password input if they just need to enter their email for a reset link */}
+        {!isForgotPassword && (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <input 
+              type="password" 
+              placeholder="Password (min 6 characters)" 
+              required 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            {/* Show 'Forgot Password?' link only on the standard Sign In view */}
+            {!isSignUp && (
+              <button 
+                type="button" 
+                onClick={() => setIsForgotPassword(true)} 
+                style={{ alignSelf: 'flex-end', background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '0.8em', marginTop: '8px' }}
+              >
+                Forgot password?
+              </button>
+            )}
+          </div>
+        )}
 
         <button 
           type="submit" 
@@ -111,22 +133,28 @@ export default function Auth() {
             fontSize: '1em'
           }}
         >
-          {isLoading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+          {isLoading ? 'Processing...' : (isForgotPassword ? 'Send Reset Link' : (isSignUp ? 'Sign Up' : 'Sign In'))}
         </button>
       </form>
 
-      {/* The Toggle Button */}
+      {/* The Bottom Toggle Area */}
       <div style={{ textAlign: 'center', marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
-        <button 
-          onClick={() => setIsSignUp(!isSignUp)} 
-          style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '0.9em' }}
-        >
-          {isSignUp ? (
-            <span>Already have an account? <strong style={{color: '#007bff'}}>Sign in here.</strong></span>
-          ) : (
-            <span>Don't have an account? <strong style={{color: '#007bff'}}>Sign up here.</strong></span>
-          )}
-        </button>
+        {isForgotPassword ? (
+          <button onClick={() => setIsForgotPassword(false)} style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', fontSize: '0.9em' }}>
+            Back to Sign In
+          </button>
+        ) : (
+          <button 
+            onClick={() => setIsSignUp(!isSignUp)} 
+            style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '0.9em' }}
+          >
+            {isSignUp ? (
+              <span>Already have an account? <strong style={{color: '#007bff'}}>Sign in here.</strong></span>
+            ) : (
+              <span>Don't have an account? <strong style={{color: '#007bff'}}>Sign up here.</strong></span>
+            )}
+          </button>
+        )}
       </div>
     </div>
   )
