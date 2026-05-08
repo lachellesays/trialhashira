@@ -21,8 +21,10 @@ function App() {
   // --- RESPONSIVE STATE ---
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
-  // --- STATE: Add New Dog ---
+  // --- STATE: Add/Edit Dog ---
   const [dogForm, setDogForm] = useState({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
+  const [editingDog, setEditingDog] = useState(null)
+  const [editDogForm, setEditDogForm] = useState({ id: '', regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
 
   // --- STATE: Log New Trial ---
   const [trialInfo, setTrialInfo] = useState({ dog_id: '', venue: 'AKC', trial_date: '', location: '', judge_name: '' })
@@ -104,7 +106,7 @@ function App() {
     }
   }, [trialInfo.dog_id, trialInfo.venue, dogs])
 
-  // 2. LOGIC: Dog Management
+  // 2. LOGIC: Dog Management (Add, Edit, Delete)
   const saveDog = async (e) => {
     e.preventDefault()
     const { error } = await supabase.from('dog_info').insert([{
@@ -118,6 +120,49 @@ function App() {
     else {
       alert("Dog Added!"); fetchDogs(); setActiveTab('my-pack')
       setDogForm({ regName: '', callName: '', dob: '', breed: '', akcHt: '', ukiHt: '' })
+    }
+  }
+
+  const startEditDog = (dog) => {
+    setEditingDog(dog.id)
+    setEditDogForm({
+      id: dog.id,
+      regName: dog.registered_name || '',
+      callName: dog.call_name || '',
+      dob: dog.dob || '',
+      breed: dog.breed || '',
+      akcHt: dog.venue_height?.AKC || '',
+      ukiHt: dog.venue_height?.UKI || ''
+    })
+  }
+
+  const saveEditedDog = async (e) => {
+    e.preventDefault()
+    const { error } = await supabase.from('dog_info').update({
+      registered_name: editDogForm.regName,
+      call_name: editDogForm.callName,
+      dob: editDogForm.dob,
+      breed: editDogForm.breed,
+      venue_height: { AKC: editDogForm.akcHt, UKI: editDogForm.ukiHt }
+    }).eq('id', editDogForm.id)
+
+    if (error) alert(error.message)
+    else {
+      alert("Dog Updated!")
+      setEditingDog(null)
+      fetchDogs()
+    }
+  }
+
+  const deleteDog = async (id) => {
+    if (window.confirm("CRITICAL WARNING: Are you sure you want to delete this dog? This will permanently delete ALL their recorded trials, runs, and title trackers. This cannot be undone.")) {
+      const { error } = await supabase.from('dog_info').delete().eq('id', id)
+      if (error) alert(error.message)
+      else {
+        fetchDogs()
+        fetchTrials()
+        fetchTitles()
+      }
     }
   }
 
@@ -161,7 +206,7 @@ function App() {
   }
   const deleteTitle = (id) => { if (window.confirm("Delete tracker?")) supabase.from('title_progress').delete().eq('id', id).then(fetchTitles) }
 
-  // 5. EDIT LOGIC
+  // 5. EDIT LOGIC (Trials)
   const startEditTrial = (trial) => { setEditingTrial(trial.id); setEditTrialForm({ ...trial }); setEditRuns(trial.trial_runs || []) }
   const updateEditRun = (index, field, value) => { const newRuns = [...editRuns]; newRuns[index][field] = value; setEditRuns(newRuns) }
   const addEditRunRow = () => setEditRuns([...editRuns, { class_name: '', class_level: '', jump_height: '', is_q: false, nq_reason: '', comments: '', yps: '', course_time: '' }])
@@ -203,7 +248,6 @@ function App() {
   if (!session) return <div style={{ padding: '50px' }}><Auth /></div>
 
   return (
-    // Note: paddingBottom is increased on mobile so the content doesn't hide behind the bottom nav bar
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: isMobile ? '80px' : '20px', fontFamily: 'sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', marginBottom: '15px' }}>
         <h2>Trial Tracker</h2>
@@ -224,9 +268,16 @@ function App() {
         <div>
           <h3>Your Dogs</h3>
           {dogs.length === 0 ? <p>No dogs yet.</p> : dogs.map(dog => (
-            <div key={dog.id} style={{ border: '1px solid #ddd', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
-              <strong>{dog.call_name}</strong> ({dog.breed})
-              <div style={{ fontSize: '0.8em', color: '#666' }}>AKC: {dog.venue_height?.AKC}" | UKI: {dog.venue_height?.UKI}"</div>
+            <div key={dog.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '10px', position: 'relative' }}>
+              <div style={{ position: 'absolute', right: '10px', top: '10px', display: 'flex', gap: '15px' }}>
+                 <button onClick={() => startEditDog(dog)} style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', fontWeight: 'bold' }}>Edit</button>
+                 <button onClick={() => deleteDog(dog.id)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+              </div>
+              <strong style={{ fontSize: '1.2em' }}>{dog.call_name}</strong> <span style={{ color: '#666' }}>({dog.breed})</span>
+              <div style={{ marginTop: '5px', fontSize: '0.9em', color: '#444' }}>
+                 {dog.registered_name && <div>Reg: <em>{dog.registered_name}</em></div>}
+                 <div>AKC: {dog.venue_height?.AKC || 'N/A'}" | UKI: {dog.venue_height?.UKI || 'N/A'}"</div>
+              </div>
             </div>
           ))}
         </div>
@@ -340,11 +391,34 @@ function App() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Dog Modal */}
+      {editingDog && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '10px' : '0' }}>
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Edit Dog Info</h3>
+            <form onSubmit={saveEditedDog} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input placeholder="Call Name" required value={editDogForm.callName} onChange={e => setEditDogForm({...editDogForm, callName: e.target.value})} />
+              <input placeholder="Registered Name" value={editDogForm.regName} onChange={e => setEditDogForm({...editDogForm, regName: e.target.value})} />
+              <input type="date" value={editDogForm.dob} onChange={e => setEditDogForm({...editDogForm, dob: e.target.value})} />
+              <input placeholder="Breed" value={editDogForm.breed} onChange={e => setEditDogForm({...editDogForm, breed: e.target.value})} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input type="number" inputMode="decimal" placeholder="AKC Ht" value={editDogForm.akcHt} onChange={e => setEditDogForm({...editDogForm, akcHt: e.target.value})} />
+                <input type="number" inputMode="decimal" placeholder="UKI Ht" value={editDogForm.ukiHt} onChange={e => setEditDogForm({...editDogForm, ukiHt: e.target.value})} />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="submit" style={{ flex: 1, padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Save Changes</button>
+                <button type="button" onClick={() => setEditingDog(null)} style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '4px' }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Trial Modal */}
       {editingTrial && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '10px' : '0' }}>
           <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3>Edit Trial</h3>
+            <h3 style={{ marginTop: 0 }}>Edit Trial</h3>
             <form onSubmit={saveEditedTrial}>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
                 <select value={editTrialForm.dog_id} onChange={e => setEditTrialForm({...editTrialForm, dog_id: e.target.value})}><option value="">Select Dog</option>{dogs.map(d => <option key={d.id} value={d.id}>{d.call_name}</option>)}</select>
